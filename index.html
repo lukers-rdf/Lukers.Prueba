@@ -1782,6 +1782,13 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
+            // ✅ Deshabilitar botón y mostrar spinner
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
+            }
+
             try {
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
@@ -1800,9 +1807,15 @@
                     }
                     throw new Error(errorMsg);
                 }
-                showToast('Bienvenido de vuelta!', 'success');
+                showToast('¡Bienvenido de vuelta!', 'success');
             } catch (error) {
                 showToast(error.message, 'error');
+                
+                // ✅ Re-habilitar botón si falla
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Iniciar Sesión';
+                }
             }
         }
 
@@ -1820,6 +1833,13 @@
                     showToast('Código de jefe incorrecto', 'error');
                     return;
                 }
+            }
+
+            // ✅ Deshabilitar botón y mostrar spinner
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando cuenta...';
             }
 
             try {
@@ -1844,9 +1864,21 @@
                     throw new Error(errorMsg);
                 }
                 
-                showToast('Cuenta creada! Revisa tu email para confirmar', 'success');
+                showToast('¡Cuenta creada! Revisa tu email para confirmar', 'success');
+                
+                // ✅ Restaurar botón
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Crear Cuenta';
+                }
             } catch (error) {
                 showToast(error.message, 'error');
+                
+                // ✅ Re-habilitar botón si falla
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Crear Cuenta';
+                }
             }
         }
 
@@ -2204,35 +2236,59 @@
             const taskType = document.getElementById('taskType').value;
             
             // Validar permisos
-            if (taskType === 'principal' && currentProfile.role !== 'jefe') {
+            if (taskType === 'principal' && currentProfile?.role !== 'jefe') {
                 showToast('Solo el jefe puede crear tareas principales', 'error');
                 return;
             }
 
-            const taskData = {
-                title: document.getElementById('taskTitle').value,
-                description: document.getElementById('taskDescription').value,
-                task_type: taskType,
-                priority: document.getElementById('taskPriority').value,
-                assigned_to: document.getElementById('taskAssignee').value,
-                created_by: currentUser.id,
-                due_date: document.getElementById('taskDueDate').value || null
-            };
-
-            const { data, error } = await supabase
-                .from('tasks')
-                .insert([taskData])
-                .select();
-
-            if (error) {
-                showToast('Error creando tarea: ' + error.message, 'error');
-                return;
+            // ✅ Deshabilitar botón submit inmediatamente
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
             }
 
-            showToast('Tarea creada exitosamente', 'success');
-            closeModal('newTaskModal');
-            e.target.reset();
-            loadTasks();
+            try {
+                const taskData = {
+                    title: document.getElementById('taskTitle').value,
+                    description: document.getElementById('taskDescription').value,
+                    task_type: taskType,
+                    priority: document.getElementById('taskPriority').value,
+                    assigned_to: document.getElementById('taskAssignee').value,
+                    created_by: currentUser.id,
+                    due_date: document.getElementById('taskDueDate').value || null
+                };
+
+                // Timeout de 10 segundos
+                const { data, error } = await Promise.race([
+                    supabase.from('tasks').insert([taskData]).select(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout creando tarea')), 10000)
+                    )
+                ]);
+
+                if (error) throw error;
+
+                showToast('Tarea creada exitosamente', 'success');
+                closeModal('newTaskModal');
+                e.target.reset();
+                loadTasks();
+                
+                // Restaurar botón para próxima vez
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save"></i> Crear Tarea';
+                }
+            } catch (error) {
+                console.error('Error creando tarea:', error);
+                showToast('Error creando tarea: ' + error.message, 'error');
+                
+                // Re-habilitar botón si falla
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save"></i> Crear Tarea';
+                }
+            }
         }
 
         // ============================================
@@ -2240,45 +2296,34 @@
         // ============================================
         
         async function openTaskDetail(task) {
-            // Cargar sesiones activas
-            const { data: sessions } = await supabase
-                .from('task_sessions')
-                .select('*')
-                .eq('task_id', task.id)
-                .order('start_time', { ascending: false });
-
-            const activeSession = sessions?.find(s => s.is_active);
-            const totalMinutes = sessions
-                ?.filter(s => !s.is_active)
-                .reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
-
-            const isOwner = task.assigned_to === currentUser.id;
-            const isJefe = currentProfile.role === 'jefe';
-            const canControl = isOwner || isJefe;
-
-            let actionsHTML = '';
+            // ✅ Abrir modal INMEDIATAMENTE con datos básicos
+            showTaskDetailQuick(task);
             
-            if (task.status !== 'completada') {
-                if (!activeSession) {
-                    if (task.status === 'pendiente' || task.status === 'pausada') {
-                        actionsHTML += `
-                            <button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
-                                <i class="fas fa-play"></i> ${task.status === 'pausada' ? 'Reanudar' : 'Iniciar'}
-                            </button>
-                        `;
-                    }
-                } else {
+            // ✅ Cargar sesiones y actualizar en segundo plano
+            loadTaskSessions(task).catch(error => {
+                console.warn('Error cargando sesiones de tarea:', error.message);
+                // El modal ya está abierto con datos básicos
+            });
+        }
+        
+        function showTaskDetailQuick(task) {
+            // ✅ Mostrar modal inmediatamente con datos que ya tenemos
+            const isOwner = task.assigned_to === currentUser.id;
+            const isJefe = currentProfile?.role === 'jefe';
+            const canControl = isOwner || isJefe;
+            
+            // Acciones básicas sin datos de sesiones
+            let actionsHTML = '';
+            if (task.status !== 'completada' && canControl) {
+                if (task.status === 'pendiente' || task.status === 'pausada') {
                     actionsHTML += `
-                        <button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled' : ''}>
-                            <i class="fas fa-pause"></i> Pausar
-                        </button>
-                        <button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
-                            <i class="fas fa-check"></i> Completar
+                        <button class="btn btn-success btn-sm" onclick="startTask('${task.id}')">
+                            <i class="fas fa-play"></i> ${task.status === 'pausada' ? 'Reanudar' : 'Iniciar'}
                         </button>
                     `;
                 }
             }
-
+            
             if (isJefe) {
                 actionsHTML += `
                     <button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')">
@@ -2286,7 +2331,7 @@
                     </button>
                 `;
             }
-
+            
             document.getElementById('taskDetailContent').innerHTML = `
                 <div class="task-detail-header">
                     <div>
@@ -2302,14 +2347,9 @@
                 ${task.description ? `<p style="color: var(--text-secondary); margin-bottom: 20px;">${task.description}</p>` : ''}
 
                 <div class="time-tracker">
-                    <div class="time-display" id="timerDisplay-${task.id}">
-                        ${formatDuration(totalMinutes)}
+                    <div class="time-display">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando...
                     </div>
-                    ${activeSession ? `
-                        <p style="color: var(--success); font-size: 0.85rem;">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> En progreso
-                        </p>
-                    ` : ''}
                 </div>
 
                 <div class="task-detail-meta">
@@ -2336,11 +2376,128 @@
                 </div>
             `;
 
+            // ✅ Abrir modal inmediatamente
             document.getElementById('taskDetailModal').classList.add('active');
+        }
+        
+        async function loadTaskSessions(task) {
+            try {
+                // Timeout de 10 segundos
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout cargando sesiones')), 10000)
+                );
+                
+                const queryPromise = supabase
+                    .from('task_sessions')
+                    .select('*')
+                    .eq('task_id', task.id)
+                    .order('start_time', { ascending: false });
+                
+                const { data: sessions, error } = await Promise.race([queryPromise, timeoutPromise]);
 
-            // Si hay sesión activa, iniciar timer visual
-            if (activeSession) {
-                startVisualTimer(task.id, activeSession.start_time, totalMinutes);
+                if (error) throw error;
+
+                const activeSession = sessions?.find(s => s.is_active);
+                const totalMinutes = sessions
+                    ?.filter(s => !s.is_active)
+                    .reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
+
+                const isOwner = task.assigned_to === currentUser.id;
+                const isJefe = currentProfile?.role === 'jefe';
+                const canControl = isOwner || isJefe;
+
+                let actionsHTML = '';
+                
+                if (task.status !== 'completada') {
+                    if (!activeSession) {
+                        if (task.status === 'pendiente' || task.status === 'pausada') {
+                            actionsHTML += `
+                                <button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
+                                    <i class="fas fa-play"></i> ${task.status === 'pausada' ? 'Reanudar' : 'Iniciar'}
+                                </button>
+                            `;
+                        }
+                    } else {
+                        actionsHTML += `
+                            <button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled' : ''}>
+                                <i class="fas fa-pause"></i> Pausar
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
+                                <i class="fas fa-check"></i> Completar
+                            </button>
+                        `;
+                    }
+                }
+
+                if (isJefe) {
+                    actionsHTML += `
+                        <button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    `;
+                }
+
+                // ✅ Actualizar contenido con datos completos
+                document.getElementById('taskDetailContent').innerHTML = `
+                    <div class="task-detail-header">
+                        <div>
+                            <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                            <span class="task-status-badge status-${task.status}" style="margin-left: 10px;">
+                                ${formatStatus(task.status)}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <h2 class="task-detail-title">${task.title}</h2>
+                    
+                    ${task.description ? `<p style="color: var(--text-secondary); margin-bottom: 20px;">${task.description}</p>` : ''}
+
+                    <div class="time-tracker">
+                        <div class="time-display" id="timerDisplay-${task.id}">
+                            ${formatDuration(totalMinutes)}
+                        </div>
+                        ${activeSession ? `
+                            <p style="color: var(--success); font-size: 0.85rem;">
+                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> En progreso
+                            </p>
+                        ` : ''}
+                    </div>
+
+                    <div class="task-detail-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Tipo</div>
+                            <div class="meta-value">${formatTaskType(task.task_type)}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Asignado a</div>
+                            <div class="meta-value">${task.assigned_profile?.full_name || 'Sin asignar'}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Creado por</div>
+                            <div class="meta-value">${task.created_profile?.full_name || 'Desconocido'}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Creado</div>
+                            <div class="meta-value">${new Date(task.created_at).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+
+                    <div class="task-actions">
+                        ${actionsHTML}
+                    </div>
+                `;
+
+                // Si hay sesión activa, iniciar timer visual
+                if (activeSession) {
+                    startVisualTimer(task.id, activeSession.start_time, totalMinutes);
+                }
+            } catch (error) {
+                console.warn('Error en loadTaskSessions:', error.message);
+                // Modal ya abierto con datos básicos, mostrar mensaje de error en tiempo
+                const timeDisplay = document.querySelector('.time-display');
+                if (timeDisplay) {
+                    timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No disponible';
+                }
             }
         }
 
@@ -2358,6 +2515,38 @@
         // ============================================
         
         async function startTask(taskId) {
+            // ✅ Deshabilitar botón inmediatamente
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando...';
+            }
+            
+            try {
+                // Timeout de 10 segundos para toda la operación
+                await Promise.race([
+                    performStartTask(taskId),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout iniciando tarea')), 10000)
+                    )
+                ]);
+                
+                showToast('Tarea iniciada', 'success');
+                closeModal('taskDetailModal');
+                loadTasks();
+            } catch (error) {
+                console.error('Error iniciando tarea:', error);
+                showToast('Error iniciando tarea: ' + error.message, 'error');
+                
+                // Re-habilitar botón si falla
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-play"></i> Iniciar';
+                }
+            }
+        }
+        
+        async function performStartTask(taskId) {
             // Crear nueva sesión
             const { error: sessionError } = await supabase
                 .from('task_sessions')
@@ -2367,52 +2556,82 @@
                     start_time: new Date().toISOString()
                 }]);
 
-            if (sessionError) {
-                showToast('Error iniciando tarea', 'error');
-                return;
-            }
+            if (sessionError) throw sessionError;
 
             // Actualizar estado de tarea
-            await supabase
+            const { error: updateError } = await supabase
                 .from('tasks')
                 .update({ status: 'en_progreso' })
                 .eq('id', taskId);
+                
+            if (updateError) throw updateError;
 
-            // Registrar log
+            // Registrar log (no crítico, no lanzar error si falla)
             await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'start'
-                }]);
-
-            showToast('Tarea iniciada', 'success');
-            closeModal('taskDetailModal');
-            loadTasks();
+                }])
+                .catch(err => console.warn('Error logging start:', err));
         }
 
         async function pauseTask(taskId) {
             // Solo el jefe puede pausar
-            if (currentProfile.role !== 'jefe') {
+            if (currentProfile?.role !== 'jefe') {
                 showToast('Solo el jefe puede pausar tareas', 'error');
                 return;
             }
 
+            // ✅ Deshabilitar botón inmediatamente
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Pausando...';
+            }
+            
+            try {
+                // Timeout de 10 segundos
+                await Promise.race([
+                    performPauseTask(taskId),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout pausando tarea')), 10000)
+                    )
+                ]);
+                
+                showToast('Tarea pausada', 'success');
+                closeModal('taskDetailModal');
+                loadTasks();
+            } catch (error) {
+                console.error('Error pausando tarea:', error);
+                showToast('Error pausando tarea: ' + error.message, 'error');
+                
+                // Re-habilitar botón si falla
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+                }
+            }
+        }
+        
+        async function performPauseTask(taskId) {
             // Cerrar sesión activa
-            const { data: activeSession } = await supabase
+            const { data: activeSession, error: fetchError } = await supabase
                 .from('task_sessions')
                 .select('*')
                 .eq('task_id', taskId)
                 .eq('is_active', true)
-                .single();
+                .maybeSingle();
+                
+            if (fetchError) throw fetchError;
 
             if (activeSession) {
                 const endTime = new Date();
                 const startTime = new Date(activeSession.start_time);
                 const durationMinutes = Math.round((endTime - startTime) / 60000);
 
-                await supabase
+                const { error: updateSessionError } = await supabase
                     .from('task_sessions')
                     .update({
                         end_time: endTime.toISOString(),
@@ -2420,43 +2639,78 @@
                         is_active: false
                     })
                     .eq('id', activeSession.id);
+                    
+                if (updateSessionError) throw updateSessionError;
             }
 
             // Actualizar estado
-            await supabase
+            const { error: updateTaskError } = await supabase
                 .from('tasks')
                 .update({ status: 'pausada' })
                 .eq('id', taskId);
+                
+            if (updateTaskError) throw updateTaskError;
 
-            // Registrar log
+            // Registrar log (no crítico)
             await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'pause'
-                }]);
-
-            showToast('Tarea pausada', 'success');
-            closeModal('taskDetailModal');
-            loadTasks();
+                }])
+                .catch(err => console.warn('Error logging pause:', err));
         }
 
         async function completeTask(taskId) {
+            // ✅ Deshabilitar botón inmediatamente
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Completando...';
+            }
+            
+            try {
+                // Timeout de 10 segundos
+                await Promise.race([
+                    performCompleteTask(taskId),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout completando tarea')), 10000)
+                    )
+                ]);
+                
+                showToast('¡Tarea completada!', 'success');
+                closeModal('taskDetailModal');
+                loadTasks();
+            } catch (error) {
+                console.error('Error completando tarea:', error);
+                showToast('Error completando tarea: ' + error.message, 'error');
+                
+                // Re-habilitar botón si falla
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Completar';
+                }
+            }
+        }
+        
+        async function performCompleteTask(taskId) {
             // Cerrar sesión activa si existe
-            const { data: activeSession } = await supabase
+            const { data: activeSession, error: fetchError } = await supabase
                 .from('task_sessions')
                 .select('*')
                 .eq('task_id', taskId)
                 .eq('is_active', true)
-                .single();
+                .maybeSingle();
+                
+            if (fetchError) throw fetchError;
 
             if (activeSession) {
                 const endTime = new Date();
                 const startTime = new Date(activeSession.start_time);
                 const durationMinutes = Math.round((endTime - startTime) / 60000);
 
-                await supabase
+                const { error: updateSessionError } = await supabase
                     .from('task_sessions')
                     .update({
                         end_time: endTime.toISOString(),
@@ -2464,44 +2718,70 @@
                         is_active: false
                     })
                     .eq('id', activeSession.id);
+                    
+                if (updateSessionError) throw updateSessionError;
             }
 
             // Actualizar estado
-            await supabase
+            const { error: updateTaskError } = await supabase
                 .from('tasks')
                 .update({ status: 'completada' })
                 .eq('id', taskId);
+                
+            if (updateTaskError) throw updateTaskError;
 
-            // Registrar log
+            // Registrar log (no crítico)
             await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'complete'
-                }]);
-
-            showToast('Tarea completada!', 'success');
-            closeModal('taskDetailModal');
-            loadTasks();
+                }])
+                .catch(err => console.warn('Error logging complete:', err));
         }
 
         async function deleteTask(taskId) {
-            if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+            if (!confirm('¿Estás seguro de eliminar esta tarea? Esta acción no se puede deshacer.')) return;
 
+            // ✅ Deshabilitar botón inmediatamente
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
+            }
+            
+            try {
+                // Timeout de 10 segundos
+                await Promise.race([
+                    performDeleteTask(taskId),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout eliminando tarea')), 10000)
+                    )
+                ]);
+                
+                showToast('Tarea eliminada', 'success');
+                closeModal('taskDetailModal');
+                loadTasks();
+            } catch (error) {
+                console.error('Error eliminando tarea:', error);
+                showToast('Error eliminando tarea: ' + error.message, 'error');
+                
+                // Re-habilitar botón si falla
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash"></i> Eliminar';
+                }
+            }
+        }
+        
+        async function performDeleteTask(taskId) {
             const { error } = await supabase
                 .from('tasks')
                 .delete()
                 .eq('id', taskId);
 
-            if (error) {
-                showToast('Error eliminando tarea', 'error');
-                return;
-            }
-
-            showToast('Tarea eliminada', 'success');
-            closeModal('taskDetailModal');
-            loadTasks();
+            if (error) throw error;
         }
 
         function startVisualTimer(taskId, startTime, baseMinutes) {
