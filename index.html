@@ -2561,147 +2561,177 @@
         }
         
         async function loadTaskSessions(task) {
+            // ✅ Límite de tiempo TOTAL: 8 segundos máximo
+            const totalTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout total')), 8000)
+            );
+            
             try {
-                // ✅ Verificar sesión PRIMERO
-                const sessionValid = await checkSession();
-                if (!sessionValid) {
-                    console.warn('⚠️ Sesión inválida');
-                    const timeDisplay = document.querySelector('.time-display');
-                    if (timeDisplay) {
-                        timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Sesión expirada. Recarga la página.';
-                    }
-                    return;
-                }
-                
-                // ✅ Query con retry automático
-                const result = await retryWithBackoff(async () => {
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 15000) // 15 segundos
-                    );
-                    
-                    const queryPromise = supabase
-                        .from('task_sessions')
-                        .select('*')
-                        .eq('task_id', task.id)
-                        .order('start_time', { ascending: false });
-                    
-                    const response = await Promise.race([queryPromise, timeoutPromise]);
-                    if (response.error) throw response.error;
-                    return response.data;
-                }, 2, 2000); // 2 reintentos, delay base 2 segundos
-                
-                const sessions = result;
-                const activeSession = sessions?.find(s => s.is_active);
-                const totalMinutes = sessions
-                    ?.filter(s => !s.is_active)
-                    .reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
+                await Promise.race([
+                    (async () => {
+                        // ✅ Verificar sesión con timeout corto
+                        const sessionCheckTimeout = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout verificando sesión')), 2000)
+                        );
+                        
+                        const sessionValid = await Promise.race([
+                            checkSession(),
+                            sessionCheckTimeout
+                        ]).catch(err => {
+                            console.warn('⚠️ Error verificando sesión:', err.message);
+                            return false;
+                        });
+                        
+                        if (!sessionValid) {
+                            console.warn('⚠️ Sesión inválida');
+                            const timeDisplay = document.querySelector('.time-display');
+                            if (timeDisplay) {
+                                timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Sesión expirada.<br><small>Recarga la página</small>';
+                                timeDisplay.style.color = 'var(--error)';
+                            }
+                            return;
+                        }
+                        
+                        // ✅ Query con timeout más corto (5 segundos) y solo 1 reintento
+                        const result = await retryWithBackoff(async () => {
+                            const queryTimeout = new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error('Timeout')), 5000) // 5 segundos
+                            );
+                            
+                            const queryPromise = supabase
+                                .from('task_sessions')
+                                .select('*')
+                                .eq('task_id', task.id)
+                                .order('start_time', { ascending: false });
+                            
+                            const response = await Promise.race([queryPromise, queryTimeout]);
+                            if (response.error) throw response.error;
+                            return response.data;
+                        }, 1, 1000); // Solo 1 reintento, delay 1 segundo
+                        
+                        const sessions = result;
+                        const activeSession = sessions?.find(s => s.is_active);
+                        const totalMinutes = sessions
+                            ?.filter(s => !s.is_active)
+                            .reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
 
-                const isOwner = task.assigned_to === currentUser?.id;
-                const isJefe = currentProfile?.role === 'jefe';
-                const canControl = isOwner || isJefe;
+                        const isOwner = task.assigned_to === currentUser?.id;
+                        const isJefe = currentProfile?.role === 'jefe';
+                        const canControl = isOwner || isJefe;
 
-                let actionsHTML = '';
-                
-                if (task.status !== 'completada') {
-                    if (!activeSession) {
-                        if (task.status === 'pendiente' || task.status === 'pausada') {
+                        let actionsHTML = '';
+                        
+                        if (task.status !== 'completada') {
+                            if (!activeSession) {
+                                if (task.status === 'pendiente' || task.status === 'pausada') {
+                                    actionsHTML += `
+                                        <button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
+                                            <i class="fas fa-play"></i> ${task.status === 'pausada' ? 'Reanudar' : 'Iniciar'}
+                                        </button>
+                                    `;
+                                }
+                            } else {
+                                actionsHTML += `
+                                    <button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled' : ''}>
+                                        <i class="fas fa-pause"></i> Pausar
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
+                                        <i class="fas fa-check"></i> Completar
+                                    </button>
+                                `;
+                            }
+                        }
+
+                        if (isJefe) {
                             actionsHTML += `
-                                <button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
-                                    <i class="fas fa-play"></i> ${task.status === 'pausada' ? 'Reanudar' : 'Iniciar'}
+                                <button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')">
+                                    <i class="fas fa-trash"></i> Eliminar
                                 </button>
                             `;
                         }
-                    } else {
-                        actionsHTML += `
-                            <button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled' : ''}>
-                                <i class="fas fa-pause"></i> Pausar
-                            </button>
-                            <button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!canControl ? 'disabled' : ''}>
-                                <i class="fas fa-check"></i> Completar
-                            </button>
+
+                        // ✅ Actualizar contenido
+                        const contentElement = document.getElementById('taskDetailContent');
+                        if (!contentElement) {
+                            console.warn('⚠️ Elemento no encontrado');
+                            return;
+                        }
+                        
+                        contentElement.innerHTML = `
+                            <div class="task-detail-header">
+                                <div>
+                                    <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                                    <span class="task-status-badge status-${task.status}" style="margin-left: 10px;">
+                                        ${formatStatus(task.status)}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <h2 class="task-detail-title">${task.title}</h2>
+                            
+                            ${task.description ? `<p style="color: var(--text-secondary); margin-bottom: 20px;">${task.description}</p>` : ''}
+
+                            <div class="time-tracker">
+                                <div class="time-display" id="timerDisplay-${task.id}">
+                                    ${formatDuration(totalMinutes)}
+                                </div>
+                                ${activeSession ? `
+                                    <p style="color: var(--success); font-size: 0.85rem;">
+                                        <i class="fas fa-circle" style="font-size: 0.5rem;"></i> En progreso
+                                    </p>
+                                ` : ''}
+                            </div>
+
+                            <div class="task-detail-meta">
+                                <div class="meta-item">
+                                    <div class="meta-label">Tipo</div>
+                                    <div class="meta-value">${formatTaskType(task.task_type)}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="meta-label">Asignado a</div>
+                                    <div class="meta-value">${task.assigned_profile?.full_name || 'Sin asignar'}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="meta-label">Creado por</div>
+                                    <div class="meta-value">${task.created_profile?.full_name || 'Desconocido'}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="meta-label">Creado</div>
+                                    <div class="meta-value">${new Date(task.created_at).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+
+                            <div class="task-actions">
+                                ${actionsHTML}
+                            </div>
                         `;
-                    }
-                }
 
-                if (isJefe) {
-                    actionsHTML += `
-                        <button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')">
-                            <i class="fas fa-trash"></i> Eliminar
-                        </button>
-                    `;
-                }
-
-                // ✅ Actualizar contenido
-                const contentElement = document.getElementById('taskDetailContent');
-                if (!contentElement) {
-                    console.warn('⚠️ Elemento no encontrado');
-                    return;
-                }
-                
-                contentElement.innerHTML = `
-                    <div class="task-detail-header">
-                        <div>
-                            <span class="task-priority priority-${task.priority}">${task.priority}</span>
-                            <span class="task-status-badge status-${task.status}" style="margin-left: 10px;">
-                                ${formatStatus(task.status)}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <h2 class="task-detail-title">${task.title}</h2>
-                    
-                    ${task.description ? `<p style="color: var(--text-secondary); margin-bottom: 20px;">${task.description}</p>` : ''}
-
-                    <div class="time-tracker">
-                        <div class="time-display" id="timerDisplay-${task.id}">
-                            ${formatDuration(totalMinutes)}
-                        </div>
-                        ${activeSession ? `
-                            <p style="color: var(--success); font-size: 0.85rem;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> En progreso
-                            </p>
-                        ` : ''}
-                    </div>
-
-                    <div class="task-detail-meta">
-                        <div class="meta-item">
-                            <div class="meta-label">Tipo</div>
-                            <div class="meta-value">${formatTaskType(task.task_type)}</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Asignado a</div>
-                            <div class="meta-value">${task.assigned_profile?.full_name || 'Sin asignar'}</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Creado por</div>
-                            <div class="meta-value">${task.created_profile?.full_name || 'Desconocido'}</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Creado</div>
-                            <div class="meta-value">${new Date(task.created_at).toLocaleDateString()}</div>
-                        </div>
-                    </div>
-
-                    <div class="task-actions">
-                        ${actionsHTML}
-                    </div>
-                `;
-
-                // Iniciar timer si hay sesión activa
-                if (activeSession) {
-                    startVisualTimer(task.id, activeSession.start_time, totalMinutes);
-                }
+                        // Iniciar timer si hay sesión activa
+                        if (activeSession) {
+                            startVisualTimer(task.id, activeSession.start_time, totalMinutes);
+                        }
+                    })(),
+                    totalTimeout
+                ]);
             } catch (error) {
-                console.error('❌ Error cargando sesiones después de reintentos:', error);
+                console.error('❌ Error cargando sesiones:', error.message);
                 const timeDisplay = document.querySelector('.time-display');
                 if (timeDisplay) {
                     if (error.message.includes('Timeout')) {
-                        timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Conexión lenta. <br><small>Intenta recargar</small>';
+                        timeDisplay.innerHTML = `
+                            <i class="fas fa-exclamation-triangle"></i> Timeout<br>
+                            <small style="font-size: 0.75rem; opacity: 0.8;">
+                                <button onclick="location.reload()" style="background: var(--error); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-top: 5px;">
+                                    Recargar Página
+                                </button>
+                            </small>
+                        `;
                     } else {
-                        timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error de conexión';
+                        timeDisplay.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error de conexión<br><small>Intenta recargar</small>';
                     }
                     timeDisplay.style.color = 'var(--error)';
-                    timeDisplay.style.fontSize = '0.9rem';
+                    timeDisplay.style.fontSize = '0.85rem';
+                    timeDisplay.style.textAlign = 'center';
                 }
             }
         }
@@ -2771,15 +2801,18 @@
                 
             if (updateError) throw updateError;
 
-            // Registrar log (no crítico, no lanzar error si falla)
-            await supabase
+            // ✅ Registrar log (no crítico, usar patrón correcto)
+            const { error: logError } = await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'start'
-                }])
-                .catch(err => console.warn('Error logging start:', err));
+                }]);
+            
+            if (logError) {
+                console.warn('⚠️ Error logging start (no crítico):', logError.message);
+            }
         }
 
         async function pauseTask(taskId) {
@@ -2856,15 +2889,18 @@
                 
             if (updateTaskError) throw updateTaskError;
 
-            // Registrar log (no crítico)
-            await supabase
+            // ✅ Registrar log (no crítico, usar patrón correcto)
+            const { error: logError } = await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'pause'
-                }])
-                .catch(err => console.warn('Error logging pause:', err));
+                }]);
+            
+            if (logError) {
+                console.warn('⚠️ Error logging pause (no crítico):', logError.message);
+            }
         }
 
         async function completeTask(taskId) {
@@ -2935,15 +2971,18 @@
                 
             if (updateTaskError) throw updateTaskError;
 
-            // Registrar log (no crítico)
-            await supabase
+            // ✅ Registrar log (no crítico, usar patrón correcto)
+            const { error: logError } = await supabase
                 .from('task_time_logs')
                 .insert([{
                     task_id: taskId,
                     user_id: currentUser.id,
                     action: 'complete'
-                }])
-                .catch(err => console.warn('Error logging complete:', err));
+                }]);
+            
+            if (logError) {
+                console.warn('⚠️ Error logging complete (no crítico):', logError.message);
+            }
         }
 
         async function deleteTask(taskId) {
