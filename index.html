@@ -2113,30 +2113,29 @@
         // ============================================
         
         async function openNewTaskModal() {
-            try {
-                // Abrir modal primero (experiencia del usuario)
-                document.getElementById('newTaskModal').classList.add('active');
-                
-                // Cargar assignees en segundo plano
-                await Promise.race([
-                    loadAssignees(),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 5000)
-                    )
-                ]);
-            } catch (error) {
-                console.error('Error cargando asignados:', error);
-                // El modal ya está abierto, mostrar mensaje de error si es necesario
-                showToast('Advertencia: No se pudieron cargar todos los trabajadores', 'warning');
-            }
+            // ✅ Abrir modal INMEDIATAMENTE sin esperar nada
+            document.getElementById('newTaskModal').classList.add('active');
+            
+            // ✅ Cargar assignees en segundo plano (sin await, sin bloquear)
+            loadAssignees().catch(error => {
+                console.warn('No se pudieron cargar todos los trabajadores:', error.message);
+                // Ya hay un fallback en loadAssignees, no hacer nada más
+            });
         }
 
         async function loadAssignees() {
             try {
-                const { data, error } = await supabase
+                // ✅ Timeout más largo (10 segundos)
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout cargando trabajadores')), 10000)
+                );
+                
+                const queryPromise = supabase
                     .from('profiles')
                     .select('id, full_name, role')
                     .order('full_name');
+                
+                const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
                 if (error) throw error;
 
@@ -2156,26 +2155,27 @@
                         select.appendChild(option);
                     });
                 } else {
-                    // Si no hay perfiles, agregar al menos el usuario actual
-                    const option = document.createElement('option');
-                    option.value = currentUser.id;
-                    option.textContent = currentProfile?.full_name || 'Yo';
-                    option.selected = true;
-                    select.appendChild(option);
+                    // ✅ Si no hay perfiles, agregar al menos el usuario actual
+                    addCurrentUserOption(select);
                 }
             } catch (error) {
-                console.error('Error en loadAssignees:', error);
-                // Intentar al menos poner el usuario actual
+                console.warn('Error en loadAssignees:', error.message);
+                // ✅ Fallback silencioso: agregar usuario actual
                 const select = document.getElementById('taskAssignee');
                 if (select && currentUser) {
                     select.innerHTML = '';
-                    const option = document.createElement('option');
-                    option.value = currentUser.id;
-                    option.textContent = currentProfile?.full_name || 'Yo';
-                    option.selected = true;
-                    select.appendChild(option);
+                    addCurrentUserOption(select);
                 }
             }
+        }
+        
+        function addCurrentUserOption(select) {
+            if (!select || !currentUser) return;
+            const option = document.createElement('option');
+            option.value = currentUser.id;
+            option.textContent = currentProfile?.full_name || 'Yo';
+            option.selected = true;
+            select.appendChild(option);
         }
 
         async function loadWorkersFilter() {
