@@ -1610,7 +1610,16 @@
         const SUPABASE_URL = 'https://jzjomvfwqvedsyvfcvto.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6am9tdmZ3cXZlZHN5dmZjdnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1OTA1NzAsImV4cCI6MjA3OTE2NjU3MH0.Xp_Ns363pIG46EA_pqd-9bCwBRacrVfzwdIeKYyVBP8';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // ✅ Configurar Supabase con persistencia local y sesión de 1 hora
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,        // ✅ Persistir sesión en localStorage
+                autoRefreshToken: true,      // ✅ Refrescar token automáticamente
+                detectSessionInUrl: false,   // No necesario para esta app
+                storage: localStorage,       // ✅ Usar localStorage
+                storageKey: 'taskflow-auth', // Clave personalizada
+            }
+        });
 
         // ============================================
         // ESTADO GLOBAL
@@ -1623,6 +1632,62 @@
         
         // Código secreto para registrarse como jefe (cámbialo por el que quieras)
         const JEFE_SECRET_CODE = 'admin2024';
+
+        // ============================================
+        // 🕐 SISTEMA DE TIMEOUT POR INACTIVIDAD (1 HORA)
+        // ============================================
+        
+        const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hora en milisegundos
+        let inactivityTimer = null;
+        let lastActivityTime = Date.now();
+        
+        function resetInactivityTimer() {
+            lastActivityTime = Date.now();
+            
+            // Limpiar timer anterior
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+            
+            // Configurar nuevo timer
+            inactivityTimer = setTimeout(() => {
+                console.log('⏱️ Sesión expirada por inactividad (1 hora)');
+                handleInactivityLogout();
+            }, INACTIVITY_TIMEOUT);
+        }
+        
+        async function handleInactivityLogout() {
+            console.log('🚪 Cerrando sesión por inactividad...');
+            
+            // Limpiar recursos
+            cleanupTimers();
+            cleanupRealtimeSubscriptions();
+            cleanupVisibilityHandler();
+            
+            // Invalidar cachés
+            updateSessionCache(false);
+            cache.clear();
+            
+            // Cerrar sesión
+            await supabase.auth.signOut();
+            
+            // Mostrar mensaje
+            showToast('Sesión cerrada por inactividad (1 hora)', 'info');
+            showAuth();
+        }
+        
+        function setupActivityListeners() {
+            // Eventos que resetean el timer de inactividad
+            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+            
+            events.forEach(event => {
+                document.addEventListener(event, () => {
+                    resetInactivityTimer();
+                }, { passive: true });
+            });
+            
+            console.log('✅ Listeners de actividad configurados (timeout: 1 hora)');
+        }
 
         // ============================================
         // 🚀 SISTEMA DE CACHÉ LRU v4.0
@@ -1711,41 +1776,81 @@
         };
 
         // ============================================
+        // 🔒 CACHÉ DE VALIDACIÓN DE SESIÓN
+        // ============================================
+        
+        let sessionValidationCache = {
+            isValid: false,
+            timestamp: 0,
+            ttl: 30000 // 30 segundos
+        };
+        
+        function isSessionCacheValid() {
+            const now = Date.now();
+            const age = now - sessionValidationCache.timestamp;
+            return sessionValidationCache.isValid && age < sessionValidationCache.ttl;
+        }
+        
+        function updateSessionCache(isValid) {
+            sessionValidationCache = {
+                isValid,
+                timestamp: Date.now(),
+                ttl: 30000
+            };
+        }
+
+        // ============================================
         // MANEJO DE SESIÓN Y TIEMPO REAL
         // ============================================
         
         async function checkSession() {
             try {
+                // ✅ Usar caché si es válido
+                if (isSessionCacheValid()) {
+                    console.log('⚡ Session check from cache (0ms)');
+                    return true;
+                }
+                
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (!session || error) {
                     console.warn('⚠️ Sesión inválida');
                     currentUser = null;
                     currentProfile = null;
+                    updateSessionCache(false);
                     showAuth();
                     return false;
                 }
                 
-                // Refrescar token si está por expirar (solo si es necesario)
+                // ✅ Refrescar token ASÍNCRONAMENTE si está por expirar
                 const expiresAt = session.expires_at * 1000;
                 const now = Date.now();
                 const fiveMinutes = 5 * 60 * 1000;
                 
                 if (expiresAt - now < fiveMinutes) {
-                    console.log('🔄 Refrescando token de sesión...');
-                    const { data, error: refreshError } = await supabase.auth.refreshSession();
-                    if (data.session && !refreshError) {
-                        currentUser = data.session.user;
-                        console.log('✅ Token refrescado');
-                    } else {
-                        console.error('❌ Error refrescando token:', refreshError);
-                        return false;
-                    }
+                    console.log('🔄 Refrescando token de sesión (async)...');
+                    
+                    // ✅ Refresh en background sin bloquear
+                    supabase.auth.refreshSession().then(({ data, error: refreshError }) => {
+                        if (data.session && !refreshError) {
+                            currentUser = data.session.user;
+                            console.log('✅ Token refrescado');
+                            updateSessionCache(true);
+                        } else {
+                            console.error('❌ Error refrescando token:', refreshError);
+                            updateSessionCache(false);
+                        }
+                    }).catch(err => {
+                        console.error('❌ Error en refresh asíncrono:', err);
+                    });
                 }
                 
+                // ✅ Actualizar caché y retornar inmediatamente
+                updateSessionCache(true);
                 return true;
             } catch (error) {
                 console.error('❌ Error verificando sesión:', error);
+                updateSessionCache(false);
                 return false;
             }
         }
@@ -2341,29 +2446,12 @@
         // LOGOUT AUTOMÁTICO AL CERRAR NAVEGADOR
         // ============================================
         
-        function setupAutoLogout() {
-            // Logout automático al cerrar pestaña/navegador
-            window.addEventListener('beforeunload', async (e) => {
-                console.log('🚪 Cerrando pestaña - Logout automático');
-                
-                // Limpiar recursos
-                cleanupTimers();
-                cleanupRealtimeSubscriptions();
-                cleanupVisibilityHandler();
-                
-                // Cerrar sesión en Supabase
-                await supabase.auth.signOut();
-                
-                // Limpiar localStorage (excepto tema)
-                const theme = localStorage.getItem('theme');
-                localStorage.clear();
-                if (theme) {
-                    localStorage.setItem('theme', theme);
-                }
-            });
-            
-            console.log('✅ Auto-logout configurado (al cerrar pestaña/navegador)');
-        }
+        // ============================================
+        // ❌ AUTO-LOGOUT ELIMINADO
+        // ============================================
+        // La función setupAutoLogout() fue eliminada porque cerraba sesión
+        // al cambiar de pestaña. Ahora usamos timeout de inactividad (1 hora)
+        // que solo se dispara por INACTIVIDAD REAL, no por cambios de pestaña.
 
         // ============================================
         // AUTENTICACIÓN
@@ -2425,6 +2513,10 @@
                     }
                     throw new Error(errorMsg);
                 }
+                
+                // ✅ Reset timer de inactividad al hacer login
+                resetInactivityTimer();
+                
                 showToast('¡Bienvenido de vuelta!', 'success');
             } catch (error) {
                 showToast(error.message, 'error');
@@ -2505,6 +2597,11 @@
             cleanupTimers();
             cleanupRealtimeSubscriptions();
             cleanupVisibilityHandler();
+            
+            // ✅ Invalidar caché de sesión
+            updateSessionCache(false);
+            cache.clear();
+            
             await supabase.auth.signOut();
             showToast('Sesión cerrada', 'success');
         }
@@ -2522,8 +2619,9 @@
         // ============================================
         
         async function initApp() {
-            // ✅ Configurar logout automático al cerrar pestaña/navegador
-            setupAutoLogout();
+            // ✅ Configurar listeners de actividad y timeout de 1 hora
+            setupActivityListeners();
+            resetInactivityTimer();
             
             // Verificar sesión
             const { data: { session } } = await supabase.auth.getSession();
@@ -2541,10 +2639,21 @@
                 if (event === 'SIGNED_IN' && session) {
                     currentUser = session.user;
                     await loadUserProfile();
+                    
+                    // ✅ Reset timer de inactividad
+                    resetInactivityTimer();
+                    
                     showApp();
                 } else if (event === 'SIGNED_OUT') {
                     currentUser = null;
                     currentProfile = null;
+                    
+                    // ✅ Limpiar timer de inactividad
+                    if (inactivityTimer) {
+                        clearTimeout(inactivityTimer);
+                        inactivityTimer = null;
+                    }
+                    
                     showAuth();
                 }
             });
@@ -3090,9 +3199,9 @@
             try {
                 await Promise.race([
                     (async () => {
-                        // ✅ Verificar sesión con timeout corto
+                        // ✅ Verificar sesión con timeout aumentado (5 segundos)
                         const sessionCheckTimeout = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Timeout verificando sesión')), 2000)
+                            setTimeout(() => reject(new Error('Timeout verificando sesión')), 5000)
                         );
                         
                         const sessionValid = await Promise.race([
