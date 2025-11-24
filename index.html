@@ -4159,7 +4159,7 @@
                 .from('profiles')
                 .select(`
                     *,
-                    tasks:tasks(
+                    tasks:tasks!tasks_assigned_to_fkey(
                         id,
                         status,
                         task_sessions(duration_minutes, is_active)
