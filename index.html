@@ -1033,6 +1033,49 @@
             color: var(--text-secondary);
         }
 
+        /* ===== SYNC BUTTON ===== */
+        .sync-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .sync-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .sync-btn:active {
+            transform: translateY(0);
+        }
+
+        .sync-btn.syncing {
+            background: var(--warning);
+            cursor: wait;
+        }
+
+        .sync-btn.syncing i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* ===== JEFE CODE INPUT ===== */
         .jefe-code-group {
             display: none;
@@ -1130,6 +1173,13 @@
                     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar tema"></button>
                     <span class="theme-toggle-label" id="themeLabel">Modo Oscuro</span>
                 </div>
+                
+                <!-- ✅ Botón de Sincronización -->
+                <button class="sync-btn" onclick="syncData()" id="syncBtn" title="Sincronizar datos con el servidor">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Sincronizar Datos</span>
+                </button>
+                
                 <div class="user-info">
                     <div class="user-avatar" id="userAvatar">U</div>
                     <div class="user-details">
@@ -1874,6 +1924,98 @@
         }
 
         // ============================================
+        // SINCRONIZACIÓN DE DATOS
+        // ============================================
+        
+        async function syncData() {
+            const btn = document.getElementById('syncBtn');
+            const icon = btn.querySelector('i');
+            const text = btn.querySelector('span');
+            
+            // Deshabilitar botón y mostrar estado de sincronización
+            btn.classList.add('syncing');
+            btn.disabled = true;
+            text.textContent = 'Sincronizando...';
+            
+            try {
+                console.log('🔄 Iniciando sincronización...');
+                
+                // 1. Verificar sesión
+                const sessionValid = await checkSession();
+                if (!sessionValid) {
+                    showToast('Sesión inválida. Por favor, inicia sesión de nuevo.', 'error');
+                    return;
+                }
+                
+                // 2. Recargar datos de la vista actual
+                const activeView = document.querySelector('.view.active');
+                if (activeView) {
+                    const viewId = activeView.id;
+                    console.log('📊 Sincronizando vista:', viewId);
+                    
+                    if (viewId === 'tasksView') {
+                        await loadTasks();
+                    } else if (viewId === 'dashboardView') {
+                        await loadDashboard();
+                    } else if (viewId === 'workersView') {
+                        await loadWorkers();
+                    }
+                }
+                
+                // 3. Actualizar perfil del usuario
+                await loadUserProfile();
+                
+                // 4. Verificar estado de Realtime
+                if (!realtimeSubscription || 
+                    realtimeSubscription.state === 'closed' || 
+                    realtimeSubscription.state === 'errored') {
+                    console.log('🔌 Reconectando Realtime...');
+                    await setupRealtimeSubscriptions();
+                }
+                
+                console.log('✅ Sincronización completada');
+                showToast('Datos sincronizados correctamente', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error en sincronización:', error);
+                showToast('Error al sincronizar: ' + error.message, 'error');
+            } finally {
+                // Restaurar botón
+                btn.classList.remove('syncing');
+                btn.disabled = false;
+                text.textContent = 'Sincronizar Datos';
+            }
+        }
+
+        // ============================================
+        // LOGOUT AUTOMÁTICO AL CERRAR NAVEGADOR
+        // ============================================
+        
+        function setupAutoLogout() {
+            // Logout automático al cerrar pestaña/navegador
+            window.addEventListener('beforeunload', async (e) => {
+                console.log('🚪 Cerrando pestaña - Logout automático');
+                
+                // Limpiar recursos
+                cleanupTimers();
+                cleanupRealtimeSubscriptions();
+                cleanupVisibilityHandler();
+                
+                // Cerrar sesión en Supabase
+                await supabase.auth.signOut();
+                
+                // Limpiar localStorage (excepto tema)
+                const theme = localStorage.getItem('theme');
+                localStorage.clear();
+                if (theme) {
+                    localStorage.setItem('theme', theme);
+                }
+            });
+            
+            console.log('✅ Auto-logout configurado (al cerrar pestaña/navegador)');
+        }
+
+        // ============================================
         // AUTENTICACIÓN
         // ============================================
         
@@ -2030,6 +2172,9 @@
         // ============================================
         
         async function initApp() {
+            // ✅ Configurar logout automático al cerrar pestaña/navegador
+            setupAutoLogout();
+            
             // Verificar sesión
             const { data: { session } } = await supabase.auth.getSession();
             
