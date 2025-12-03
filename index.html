@@ -220,40 +220,44 @@
         }
         [data-theme="light"] .theme-toggle-btn::after { transform: translateX(24px); }
         .theme-toggle-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
-        .update-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-        .update-btn {
-            width: 100%; padding: 12px 16px; background: var(--bg-input);
-            border: 2px solid var(--border); border-radius: var(--radius-sm);
-            color: var(--text-primary); font-size: 0.9rem; font-weight: 600;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            gap: 10px; transition: var(--transition); position: relative; font-family: inherit;
+        
+        /* Sync Info Simple */
+        .sync-info {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 16px; margin-bottom: 16px;
+            background: var(--bg-card); border-radius: var(--radius-sm);
+            border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted);
         }
-        .update-btn:hover {
-            border-color: var(--primary);
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white; box-shadow: 0 4px 16px var(--primary-glow);
+        .sync-info i { color: var(--primary); }
+        
+        /* Banner de Actualización */
+        .update-banner {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            padding: 0; animation: slideDown 0.3s ease;
         }
-        .update-btn.loading i { animation: spin 1s linear infinite; }
-        .update-btn.has-updates { border-color: var(--accent); animation: glowPulse 2s ease-in-out infinite; }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        .update-banner-content {
+            max-width: 1200px; margin: 0 auto;
+            padding: 14px 24px; display: flex; align-items: center;
+            justify-content: center; gap: 16px; flex-wrap: wrap;
+        }
+        .update-banner-content i { font-size: 1.2rem; color: white; }
+        .update-banner-content span { color: white; font-weight: 600; font-size: 0.95rem; }
+        .update-banner-btn {
+            padding: 8px 20px; background: white; color: var(--primary);
+            border: none; border-radius: var(--radius-sm); font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            transition: var(--transition); font-size: 0.85rem;
+        }
+        .update-banner-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .update-banner-close {
+            background: transparent; border: none; color: white;
+            cursor: pointer; padding: 8px; opacity: 0.8; transition: var(--transition);
+        }
+        .update-banner-close:hover { opacity: 1; transform: scale(1.1); }
+        
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes glowPulse {
-            0%, 100% { box-shadow: 0 0 5px var(--accent); }
-            50% { box-shadow: 0 0 20px var(--accent), 0 0 30px var(--accent); }
-        }
-        .update-badge {
-            position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px;
-            background: linear-gradient(135deg, var(--danger), #dc2626); color: white;
-            border-radius: 11px; font-size: 0.7rem; font-weight: 800;
-            display: flex; align-items: center; justify-content: center; padding: 0 6px;
-            animation: bounce 0.6s ease infinite; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-        }
-        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-        .update-info { margin-top: 10px; text-align: center; }
-        .update-time { display: block; font-size: 0.75rem; color: var(--text-muted); }
-        .update-status { display: block; font-size: 0.7rem; margin-top: 4px; font-weight: 600; }
-        .update-status.synced { color: var(--success); }
-        .update-status.has-changes { color: var(--accent); animation: pulse 1.5s ease infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .main-content { margin-left: var(--sidebar-width); padding: 32px 40px; min-height: 100vh; }
         .page-header {
             display: flex; justify-content: space-between; align-items: flex-start;
@@ -473,7 +477,7 @@
             <nav class="sidebar-nav"><div class="nav-section"><div class="nav-section-title">Principal</div><a class="nav-item active" onclick="showView('tasks')"><i class="fas fa-clipboard-list"></i><span>Tareas</span></a><a class="nav-item" onclick="showView('dashboard')"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a></div><div class="nav-section" id="navWorkersSection" style="display:none"><div class="nav-section-title">Administración</div><a class="nav-item" onclick="showView('workers')"><i class="fas fa-users-cog"></i><span>Trabajadores</span></a></div></nav>
             <div class="sidebar-user">
                 <div class="theme-toggle"><button class="theme-toggle-btn" onclick="toggleTheme()"></button><span class="theme-toggle-label" id="themeLabel">Modo Oscuro</span></div>
-                <div class="update-section"><button class="update-btn" onclick="manualRefresh()" id="updateBtn"><i class="fas fa-sync-alt"></i><span>Actualizar</span><span class="update-badge" id="updateBadge" style="display:none">0</span></button><div class="update-info"><span class="update-time" id="lastUpdateTime">Actualizado ahora</span><span class="update-status synced" id="updateStatus">✓ Todo sincronizado</span></div></div>
+                <div class="sync-info"><i class="fas fa-clock"></i><span id="lastUpdateTime">Actualizado ahora</span></div>
                 <div class="user-info"><div class="user-avatar" id="userAvatar">U</div><div class="user-details"><div class="user-name" id="userName">Usuario</div><div class="user-role"><span class="role-badge trabajador" id="userRoleBadge">Trabajador</span></div></div></div>
                 <button class="btn btn-secondary btn-sm btn-block" style="margin-top:14px" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button>
             </div>
@@ -507,6 +511,14 @@
     <div class="modal-overlay" id="newTaskModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Nueva Tarea</h3><button class="modal-close" onclick="closeModal('newTaskModal')"><i class="fas fa-times"></i></button></div><form onsubmit="handleCreateTask(event)"><div class="modal-body"><div class="form-group"><label>Título de la tarea</label><input type="text" id="taskTitle" class="form-control" placeholder="Ej: Revisar documentos del proyecto" required></div><div class="form-group"><label>Descripción (opcional)</label><textarea id="taskDescription" class="form-control" placeholder="Detalles adicionales de la tarea..."></textarea></div><div class="form-group"><label>Tipo de tarea</label><select id="taskType" class="form-control" required><option value="principal">Tarea Principal</option><option value="gestion">Gestión</option><option value="complementario">Complementario</option></select></div><div class="form-group"><label>Prioridad</label><select id="taskPriority" class="form-control" required><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option></select></div><div class="form-group"><label>Asignar a</label><select id="taskAssignee" class="form-control" required></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('newTaskModal')">Cancelar</button><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Crear Tarea</button></div></form></div></div>
     <div class="modal-overlay" id="taskDetailModal"><div class="modal" style="max-width:600px"><div class="modal-header"><h3 class="modal-title">Detalle de Tarea</h3><button class="modal-close" onclick="closeModal('taskDetailModal')"><i class="fas fa-times"></i></button></div><div class="modal-body" id="taskDetailContent"><div class="loading"><div class="spinner"></div></div></div></div></div>
     <div class="toast-container" id="toastContainer"></div>
+    <div class="update-banner" id="updateBanner" style="display:none">
+        <div class="update-banner-content">
+            <i class="fas fa-bell"></i>
+            <span>Hay actualizaciones disponibles</span>
+            <button class="update-banner-btn" onclick="window.location.reload()"><i class="fas fa-sync-alt"></i> Actualizar página</button>
+            <button class="update-banner-close" onclick="hideUpdateBanner()"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
     <div class="connection-status connected" id="connectionStatus"><div class="connection-dot"></div><span>Conectado</span></div>
     <script>
         const SUPABASE_URL = 'https://jzjomvfwqvedsyvfcvto.supabase.co';
@@ -548,61 +560,33 @@
         }
         
         function updateLastUpdateTime() {
-            lastUpdateTime = new Date(); pendingChanges = 0;
-            const timeEl = document.getElementById('lastUpdateTime'), statusEl = document.getElementById('updateStatus'), badge = document.getElementById('updateBadge'), btn = document.getElementById('updateBtn');
+            lastUpdateTime = new Date();
+            const timeEl = document.getElementById('lastUpdateTime');
             if (timeEl) timeEl.textContent = `Actualizado ${formatRelativeTime(lastUpdateTime)}`;
-            if (statusEl) { statusEl.textContent = '✓ Todo sincronizado'; statusEl.className = 'update-status synced'; }
-            if (badge) badge.style.display = 'none'; if (btn) btn.classList.remove('has-updates');
             startTimeUpdater();
         }
         
-        function startTimeUpdater() { if (timeUpdaterInterval) clearInterval(timeUpdaterInterval); timeUpdaterInterval = setInterval(() => { const timeEl = document.getElementById('lastUpdateTime'); if (timeEl && lastUpdateTime) timeEl.textContent = `Actualizado ${formatRelativeTime(lastUpdateTime)}`; }, 30000); }
-        
-        function notifyPendingChange() {
-            pendingChanges++;
-            const badge = document.getElementById('updateBadge'), statusEl = document.getElementById('updateStatus'), btn = document.getElementById('updateBtn');
-            if (badge) { badge.textContent = pendingChanges > 9 ? '9+' : pendingChanges; badge.style.display = 'flex'; }
-            if (statusEl) { statusEl.textContent = `⚡ ${pendingChanges} cambio${pendingChanges > 1 ? 's' : ''} nuevo${pendingChanges > 1 ? 's' : ''}`; statusEl.className = 'update-status has-changes'; }
-            if (btn) btn.classList.add('has-updates');
+        function startTimeUpdater() {
+            if (timeUpdaterInterval) clearInterval(timeUpdaterInterval);
+            timeUpdaterInterval = setInterval(() => {
+                const timeEl = document.getElementById('lastUpdateTime');
+                if (timeEl && lastUpdateTime) timeEl.textContent = `Actualizado ${formatRelativeTime(lastUpdateTime)}`;
+            }, 30000);
         }
         
-        // Debounce para manualRefresh para evitar múltiples llamadas
-        let refreshTimeout = null;
-        let lastRefreshTime = 0;
-        const MIN_REFRESH_INTERVAL = 2000; // Mínimo 2 segundos entre refrescos
+        // Mostrar banner cuando hay cambios de OTROS usuarios
+        function showUpdateBanner() {
+            const banner = document.getElementById('updateBanner');
+            if (banner && banner.style.display === 'none') {
+                banner.style.display = 'block';
+                // También mostrar toast
+                showToast('Hay nuevas actualizaciones disponibles', 'warning');
+            }
+        }
         
-        async function manualRefresh() {
-            const now = Date.now();
-            if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
-                console.log('Refresh muy reciente, saltando...');
-                return;
-            }
-            lastRefreshTime = now;
-            
-            const btn = document.getElementById('updateBtn');
-            if (btn) { btn.classList.add('loading'); btn.disabled = true; }
-            
-            try {
-                const activeView = document.querySelector('.view.active');
-                if (activeView?.id === 'tasksView') {
-                    // Forzar reset del flag por si quedó atascado
-                    isLoadingTasks = false;
-                    await loadTasks();
-                } else if (activeView?.id === 'dashboardView') {
-                    await loadDashboard();
-                } else if (activeView?.id === 'workersView') {
-                    await loadWorkers();
-                }
-                updateLastUpdateTime();
-                pendingChanges = 0;
-                const statusEl = document.getElementById('updateStatus');
-                if (statusEl) { statusEl.textContent = '✓ Todo sincronizado'; statusEl.className = 'update-status'; }
-            } catch (e) {
-                console.error('Error en refresh:', e);
-                showToast('Error al actualizar', 'error');
-            } finally {
-                if (btn) { btn.classList.remove('loading'); btn.disabled = false; btn.classList.remove('has-updates'); }
-            }
+        function hideUpdateBanner() {
+            const banner = document.getElementById('updateBanner');
+            if (banner) banner.style.display = 'none';
         }
         
         function toggleTheme() { const html = document.documentElement, currentTheme = html.getAttribute('data-theme'), newTheme = currentTheme === 'light' ? '' : 'light'; html.setAttribute('data-theme', newTheme); localStorage.setItem('taskflow-theme', newTheme ? 'light' : 'dark'); const label = document.getElementById('themeLabel'); if (label) label.textContent = newTheme ? 'Modo Claro' : 'Modo Oscuro'; if (Object.keys(charts).length > 0) loadDashboard(); }
@@ -628,128 +612,86 @@
         async function handleLogout() { try { isManualCleanup = true; cleanupRealtime(); cleanupTimers(); await supabase.auth.signOut(); currentUser = null; currentProfile = null; isManualCleanup = false; showToast('Sesión cerrada', 'success'); } catch (error) { console.error('Logout error:', error); isManualCleanup = false; } }
         function cleanupTimers() { Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; if (timeUpdaterInterval) { clearInterval(timeUpdaterInterval); timeUpdaterInterval = null; } }
         
-        // === REALTIME ROBUSTO ===
+        // === REALTIME SIMPLIFICADO ===
         let isManualCleanup = false;
         let isConnecting = false;
         let reconnectTimeout = null;
-        const CHANNEL_NAME = 'taskflow-shared-changes'; // Canal FIJO compartido por todos
+        const CHANNEL_NAME = 'taskflow-shared-changes';
         
         function cleanupRealtime() {
             if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
             if (realtimeChannel) {
                 console.log('Limpiando canal realtime...');
-                try { supabase.removeChannel(realtimeChannel); } catch(e) { console.log('Error limpiando:', e); }
+                try { supabase.removeChannel(realtimeChannel); } catch(e) {}
                 realtimeChannel = null;
             }
         }
 
         async function setupRealtime() {
-            // Evitar múltiples conexiones simultáneas
-            if (isConnecting) { console.log('Ya conectando, ignorando...'); return; }
-            if (!currentUser) { console.log('Sin usuario, no conectar'); return; }
-            
-            // Si ya tenemos un canal activo y conectado, no reconectar
-            if (realtimeChannel && realtimeChannel.state === 'joined') {
-                console.log('Canal ya conectado, ignorando...'); return;
-            }
+            if (isConnecting || !currentUser) return;
+            if (realtimeChannel && realtimeChannel.state === 'joined') return;
             
             isConnecting = true;
             
-            // Limpiar canal anterior si existe (pero marcar como manual para no triggear reconexión)
             if (realtimeChannel) {
                 isManualCleanup = true;
                 cleanupRealtime();
-                // Pequeño delay para que el servidor procese la desconexión
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 300));
                 isManualCleanup = false;
             }
             
             console.log('Configurando canal:', CHANNEL_NAME);
             
             try {
-                realtimeChannel = supabase.channel(CHANNEL_NAME, {
-                    config: { broadcast: { self: false } }
-                })
+                realtimeChannel = supabase.channel(CHANNEL_NAME, { config: { broadcast: { self: false } } })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-                    console.log('Cambio en tasks:', payload.eventType);
-                    notifyPendingChange();
-                    // Actualizar automáticamente si estamos en la vista de tareas
-                    const tasksView = document.getElementById('tasksView');
-                    if (tasksView?.classList.contains('active')) {
-                        debouncedLoadTasks();
-                    }
+                    console.log('📢 Cambio detectado en tasks:', payload.eventType);
+                    // Solo mostrar banner, NO auto-refrescar
+                    showUpdateBanner();
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'task_sessions' }, (payload) => {
-                    console.log('Cambio en sessions:', payload.eventType);
-                    notifyPendingChange();
-                    // Si hay tarea abierta, actualizar detalle
-                    const tasksView = document.getElementById('tasksView');
-                    if (tasksView?.classList.contains('active')) {
-                        debouncedLoadTasks();
-                    }
+                    console.log('📢 Cambio detectado en sessions:', payload.eventType);
+                    showUpdateBanner();
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-                    console.log('Cambio en profiles');
-                    notifyPendingChange();
+                    console.log('📢 Cambio detectado en profiles');
+                    showUpdateBanner();
                 })
                 .subscribe((status, err) => {
-                    console.log('Estado canal:', status, err || '');
+                    console.log('Estado canal:', status);
                     isConnecting = false;
                     
-                    switch(status) {
-                        case 'SUBSCRIBED':
-                            updateConnectionStatus(true);
-                            reconnectAttempts = 0;
-                            console.log('✅ Canal conectado exitosamente');
-                            break;
-                        case 'CHANNEL_ERROR':
-                            console.warn('⚠️ Error en canal:', err);
-                            updateConnectionStatus(false);
-                            scheduleReconnect();
-                            break;
-                        case 'TIMED_OUT':
-                            console.warn('⚠️ Timeout en canal');
-                            updateConnectionStatus(false);
-                            scheduleReconnect();
-                            break;
-                        case 'CLOSED':
-                            console.log('Canal cerrado');
-                            updateConnectionStatus(false);
-                            // Solo reconectar si NO fue una limpieza manual
-                            if (!isManualCleanup) {
-                                scheduleReconnect();
-                            }
-                            break;
+                    if (status === 'SUBSCRIBED') {
+                        updateConnectionStatus(true);
+                        reconnectAttempts = 0;
+                        console.log('✅ Canal conectado');
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        updateConnectionStatus(false);
+                        scheduleReconnect();
+                    } else if (status === 'CLOSED' && !isManualCleanup) {
+                        updateConnectionStatus(false);
+                        scheduleReconnect();
                     }
                 });
             } catch (error) {
-                console.error('Error creando canal:', error);
+                console.error('Error canal:', error);
                 isConnecting = false;
                 scheduleReconnect();
             }
         }
         
         function scheduleReconnect() {
-            if (reconnectTimeout) return; // Ya hay uno programado
-            if (!currentUser) return; // No reconectar sin usuario
-            if (isManualCleanup) return; // No reconectar si estamos limpiando
-            
+            if (reconnectTimeout || !currentUser || isManualCleanup) return;
             if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts++;
-                const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempts - 1), 30000); // Exponential backoff, max 30s
-                console.log(`Reconectando en ${delay}ms (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
-                
+                const delay = Math.min(5000 * reconnectAttempts, 30000);
+                console.log(`Reconectando en ${delay/1000}s...`);
                 reconnectTimeout = setTimeout(() => {
                     reconnectTimeout = null;
                     setupRealtime();
                 }, delay);
-            } else {
-                console.error('❌ Máximo de reintentos alcanzado');
-                showToast('Conexión perdida. Por favor recarga la página.', 'error');
             }
         }
-        
-        const debouncedLoadTasks = debounce(() => { loadTasks(); }, 1000);
 
         async function initApp() { console.log('Inicializando TaskFlow Pro...'); const { data: { session } } = await supabase.auth.getSession(); if (session) { currentUser = session.user; await loadUserProfile(); showApp(); } else showAuth(); supabase.auth.onAuthStateChange(async (event, session) => { console.log('Auth state:', event); if (event === 'SIGNED_IN' && session) { currentUser = session.user; await loadUserProfile(); showApp(); } else if (event === 'SIGNED_OUT') { currentUser = null; currentProfile = null; showAuth(); } }); }
 
@@ -772,12 +714,6 @@
             const columns = { principal: document.getElementById('columnPrincipal'), gestion: document.getElementById('columnGestion'), complementario: document.getElementById('columnComplementario') };
             Object.values(columns).forEach(col => { if (col) col.innerHTML = `<div class="loading"><div class="spinner"></div><span class="loading-text">Cargando...</span></div>`; });
             
-            // Timeout de seguridad para evitar loading infinito
-            const loadingTimeout = setTimeout(() => {
-                console.warn('Timeout en loadTasks - reseteando...');
-                isLoadingTasks = false;
-            }, 15000);
-            
             try {
                 const statusFilter = document.getElementById('filterStatus')?.value;
                 const priorityFilter = document.getElementById('filterPriority')?.value;
@@ -796,15 +732,13 @@
                 
                 const { data: tasks, error } = await query;
                 
-                clearTimeout(loadingTimeout);
-                
                 if (error) throw error;
                 
-                console.log(`Tareas cargadas: ${tasks?.length || 0}`);
                 renderTasks(tasks || []);
                 updateLastUpdateTime();
+                // Ocultar banner si estaba visible (el usuario ya refrescó)
+                hideUpdateBanner();
             } catch (error) {
-                clearTimeout(loadingTimeout);
                 console.error('Error cargando tareas:', error);
                 Object.values(columns).forEach(col => {
                     if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar</p></div>`;
@@ -816,77 +750,63 @@
         }
 
         function renderTasks(tasks) {
-            console.log('renderTasks iniciando...', tasks?.length || 0);
-            try {
-                const columns = {
-                    principal: document.getElementById('columnPrincipal'),
-                    gestion: document.getElementById('columnGestion'),
-                    complementario: document.getElementById('columnComplementario')
-                };
-                const counts = { principal: 0, gestion: 0, complementario: 0 };
-                
-                // Limpiar columnas
-                Object.values(columns).forEach(col => { if (col) col.innerHTML = ''; });
-                
-                if (!tasks || tasks.length === 0) {
-                    Object.values(columns).forEach(col => {
-                        if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
-                    });
-                    document.getElementById('countPrincipal').textContent = '0';
-                    document.getElementById('countGestion').textContent = '0';
-                    document.getElementById('countComplementario').textContent = '0';
-                    console.log('renderTasks: sin tareas');
-                    return;
-                }
-                
-                tasks.forEach(task => {
-                    const column = columns[task.task_type];
-                    if (!column) {
-                        console.warn('Columna no encontrada para tipo:', task.task_type);
-                        return;
-                    }
-                    counts[task.task_type]++;
-                    
-                    const totalMinutes = (task.task_sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                    const hasActiveSession = (task.task_sessions || []).some(s => s.is_active);
-                    const assigneeName = task.assigned_profile?.full_name || 'Sin asignar';
-                    
-                    const card = document.createElement('div');
-                    card.className = 'task-card';
-                    card.onclick = () => openTaskDetail(task);
-                    card.innerHTML = `
-                        <div class="task-card-header">
-                            <span class="task-priority priority-${task.priority}">${task.priority}</span>
-                            <span class="task-status-badge status-${task.status}">${hasActiveSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
-                        </div>
-                        <div class="task-title">${task.title || 'Sin título'}</div>
-                        <div class="task-meta">
-                            <div class="task-assignee">
-                                <div class="task-assignee-avatar">${assigneeName.charAt(0).toUpperCase()}</div>
-                                <span>${assigneeName}</span>
-                            </div>
-                            ${totalMinutes > 0 ? `<span class="task-time"><i class="fas fa-clock"></i>${formatDuration(totalMinutes)}</span>` : ''}
-                        </div>
-                    `;
-                    column.appendChild(card);
+            const columns = {
+                principal: document.getElementById('columnPrincipal'),
+                gestion: document.getElementById('columnGestion'),
+                complementario: document.getElementById('columnComplementario')
+            };
+            const counts = { principal: 0, gestion: 0, complementario: 0 };
+            
+            Object.values(columns).forEach(col => { if (col) col.innerHTML = ''; });
+            
+            if (!tasks || tasks.length === 0) {
+                Object.values(columns).forEach(col => {
+                    if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
                 });
-                
-                // Mostrar mensaje vacío en columnas sin tareas
-                Object.keys(columns).forEach(type => {
-                    if (counts[type] === 0 && columns[type]) {
-                        columns[type].innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
-                    }
-                });
-                
-                // Actualizar contadores
-                document.getElementById('countPrincipal').textContent = counts.principal;
-                document.getElementById('countGestion').textContent = counts.gestion;
-                document.getElementById('countComplementario').textContent = counts.complementario;
-                
-                console.log('renderTasks completado:', counts);
-            } catch (error) {
-                console.error('Error en renderTasks:', error);
+                document.getElementById('countPrincipal').textContent = '0';
+                document.getElementById('countGestion').textContent = '0';
+                document.getElementById('countComplementario').textContent = '0';
+                return;
             }
+            
+            tasks.forEach(task => {
+                const column = columns[task.task_type];
+                if (!column) return;
+                counts[task.task_type]++;
+                
+                const totalMinutes = (task.task_sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+                const hasActiveSession = (task.task_sessions || []).some(s => s.is_active);
+                const assigneeName = task.assigned_profile?.full_name || 'Sin asignar';
+                
+                const card = document.createElement('div');
+                card.className = 'task-card';
+                card.onclick = () => openTaskDetail(task);
+                card.innerHTML = `
+                    <div class="task-card-header">
+                        <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                        <span class="task-status-badge status-${task.status}">${hasActiveSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
+                    </div>
+                    <div class="task-title">${task.title || 'Sin título'}</div>
+                    <div class="task-meta">
+                        <div class="task-assignee">
+                            <div class="task-assignee-avatar">${assigneeName.charAt(0).toUpperCase()}</div>
+                            <span>${assigneeName}</span>
+                        </div>
+                        ${totalMinutes > 0 ? `<span class="task-time"><i class="fas fa-clock"></i>${formatDuration(totalMinutes)}</span>` : ''}
+                    </div>
+                `;
+                column.appendChild(card);
+            });
+            
+            Object.keys(columns).forEach(type => {
+                if (counts[type] === 0 && columns[type]) {
+                    columns[type].innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
+                }
+            });
+            
+            document.getElementById('countPrincipal').textContent = counts.principal;
+            document.getElementById('countGestion').textContent = counts.gestion;
+            document.getElementById('countComplementario').textContent = counts.complementario;
         }
 
         async function openNewTaskModal() { document.getElementById('newTaskModal').classList.add('active'); await loadAssignees(); }
@@ -912,20 +832,12 @@
             document.getElementById('taskDetailModal').classList.add('active');
             document.getElementById('taskDetailContent').innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
             
-            // Timeout de seguridad
-            const detailTimeout = setTimeout(() => {
-                console.warn('Timeout cargando detalle de tarea');
-                document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Tiempo de espera agotado. Intenta de nuevo.</p></div>`;
-            }, 10000);
-            
             try {
                 const { data: sessions, error: sessionsError } = await supabase
                     .from('task_sessions')
                     .select('*')
                     .eq('task_id', task.id)
                     .order('start_time', { ascending: false });
-                
-                clearTimeout(detailTimeout);
                 
                 if (sessionsError) throw sessionsError;
                 
@@ -971,7 +883,6 @@
                 
                 if (activeSession) startVisualTimer(task.id, activeSession.start_time, totalMinutes);
             } catch (error) {
-                clearTimeout(detailTimeout);
                 console.error('Error cargando detalle:', error);
                 document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar los detalles</p><button class="btn btn-primary btn-sm" onclick="closeModal('taskDetailModal')">Cerrar</button></div>`;
             }
@@ -1121,37 +1032,26 @@
         document.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('active'); Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; } });
         document.addEventListener('DOMContentLoaded', () => { loadTheme(); initApp(); });
         
-        // Reconectar cuando la página vuelve a estar visible (con debounce)
-        let visibilityTimeout = null;
+        // Verificar conexión cuando la página vuelve a estar visible
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && currentUser) {
-                // Usar debounce para evitar múltiples llamadas
-                if (visibilityTimeout) clearTimeout(visibilityTimeout);
-                
-                visibilityTimeout = setTimeout(() => {
-                    console.log('Página visible - verificando conexión...');
-                    // Solo reconectar si el canal no está activo
-                    if (!realtimeChannel || realtimeChannel.state !== 'joined') {
-                        console.log('Canal no conectado, iniciando reconexión...');
-                        reconnectAttempts = 0;
-                        setupRealtime();
-                    }
-                    // Refrescar datos
-                    manualRefresh();
-                }, 500); // Esperar 500ms antes de actuar
-            }
-        });
-        
-        // Verificación periódica de conexión (cada 60 segundos)
-        setInterval(() => {
-            if (currentUser && document.visibilityState === 'visible' && !isConnecting) {
+                // Solo verificar que el canal esté conectado, NO refrescar datos
                 if (!realtimeChannel || realtimeChannel.state !== 'joined') {
-                    console.log('Verificación periódica: canal desconectado');
                     reconnectAttempts = 0;
                     setupRealtime();
                 }
             }
-        }, 60000);
+        });
+        
+        // Verificación periódica de conexión (cada 2 minutos)
+        setInterval(() => {
+            if (currentUser && !isConnecting) {
+                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
+                    reconnectAttempts = 0;
+                    setupRealtime();
+                }
+            }
+        }, 120000);
     </script>
 </body>
 </html>
