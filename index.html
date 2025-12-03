@@ -439,6 +439,22 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th, .data-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        .data-table th { background: var(--bg-card-hover); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); position: sticky; top: 0; z-index: 1; }
+        .data-table tbody tr { transition: var(--transition); }
+        .data-table tbody tr:hover { background: var(--bg-card-hover); }
+        .data-table tfoot { background: var(--bg-card-hover); font-weight: 600; }
+        .data-table tfoot td { border-top: 2px solid var(--primary); padding: 16px; }
+        .table-container { max-height: 400px; overflow-y: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+        .jornada-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .jornada-low { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .jornada-medium { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .jornada-high { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .summary-row { display: flex; gap: 24px; justify-content: flex-end; flex-wrap: wrap; }
+        .summary-item { display: flex; align-items: center; gap: 8px; }
+        .summary-label { font-size: 0.8rem; color: var(--text-muted); }
+        .summary-value { font-weight: 700; color: var(--text-primary); }
     </style>
 </head>
 <body>
@@ -469,9 +485,17 @@
                 <div class="tasks-container"><div class="task-column"><div class="column-header"><div class="column-title"><i class="fas fa-star" style="color:var(--warning)"></i> Principal</div><span class="column-count" id="countPrincipal">0</span></div><div class="column-body" id="columnPrincipal"><div class="loading"><div class="spinner"></div><span class="loading-text">Cargando...</span></div></div></div><div class="task-column"><div class="column-header"><div class="column-title"><i class="fas fa-clipboard-check" style="color:var(--info)"></i> Gestiones</div><span class="column-count" id="countGestion">0</span></div><div class="column-body" id="columnGestion"><div class="loading"><div class="spinner"></div><span class="loading-text">Cargando...</span></div></div></div><div class="task-column"><div class="column-header"><div class="column-title"><i class="fas fa-puzzle-piece" style="color:var(--success)"></i> Complementarios</div><span class="column-count" id="countComplementario">0</span></div><div class="column-body" id="columnComplementario"><div class="loading"><div class="spinner"></div><span class="loading-text">Cargando...</span></div></div></div></div>
             </div>
             <div class="view" id="dashboardView">
-                <div class="page-header"><div class="page-title"><h1>Dashboard</h1><p>Métricas y estadísticas de productividad</p></div><div class="header-actions"><select class="filter-select" id="dashboardPeriod" onchange="loadDashboard()"><option value="week" selected>Esta Semana</option><option value="month">Este Mes</option><option value="all">Todo el tiempo</option></select></div></div>
+                <div class="page-header"><div class="page-title"><h1>Dashboard</h1><p>Métricas y estadísticas de productividad</p></div></div>
+                <div class="filters-bar" style="margin-bottom:24px">
+                    <div class="filter-group"><label><i class="fas fa-calendar-day"></i> Período:</label><select class="filter-select" id="dashboardPeriod" onchange="loadDashboard()"><option value="today">Hoy</option><option value="yesterday">Ayer</option><option value="week" selected>Esta Semana</option><option value="lastweek">Semana Pasada</option><option value="month">Este Mes</option><option value="lastmonth">Mes Pasado</option><option value="all">Todo (12 meses)</option></select></div>
+                    <div class="filter-group" id="dashboardWorkerFilter" style="display:none"><label><i class="fas fa-user"></i> Trabajador:</label><select class="filter-select" id="dashboardWorker" onchange="loadDashboard()"><option value="">Todos</option></select></div>
+                    <div class="filter-group"><label><i class="fas fa-layer-group"></i> Tipo:</label><select class="filter-select" id="dashboardType" onchange="loadDashboard()"><option value="">Todos</option><option value="principal">Principal</option><option value="gestion">Gestión</option><option value="complementario">Complementario</option></select></div>
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--text-muted)"><i class="fas fa-info-circle"></i><span id="dashboardPeriodInfo">-</span></div>
+                </div>
                 <div class="stats-grid"><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Total Tareas</span><div class="stat-card-icon primary"><i class="fas fa-tasks"></i></div></div><div class="stat-card-value" id="statTotalTasks">0</div><div class="stat-card-change">En el período seleccionado</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Completadas</span><div class="stat-card-icon success"><i class="fas fa-check-circle"></i></div></div><div class="stat-card-value" id="statCompletedTasks">0</div><div class="stat-card-change">Tareas finalizadas</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Tiempo Promedio</span><div class="stat-card-icon warning"><i class="fas fa-clock"></i></div></div><div class="stat-card-value" id="statAvgTime">0m</div><div class="stat-card-change">Por tarea completada</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Efectividad</span><div class="stat-card-icon info"><i class="fas fa-percentage"></i></div></div><div class="stat-card-value" id="statEfficiency">0%</div><div class="stat-card-change">Tasa de completado</div></div></div>
-                <div class="dashboard-grid"><div class="chart-card"><div class="chart-header"><h3 class="chart-title">Productividad por Día</h3></div><div class="chart-container"><canvas id="productivityChart"></canvas></div></div><div class="chart-card"><div class="chart-header"><h3 class="chart-title">Distribución por Tipo</h3></div><div class="chart-container"><canvas id="typeDistributionChart"></canvas></div></div></div>
+                <div class="dashboard-grid" style="grid-template-columns:2fr 1fr"><div class="chart-card"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-chart-line"></i> Productividad por Día</h3></div><div class="chart-container"><canvas id="productivityChart"></canvas></div></div><div class="chart-card"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-chart-pie"></i> Distribución por Tipo</h3></div><div class="chart-container"><canvas id="typeDistributionChart"></canvas></div></div></div>
+                <div class="dashboard-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:24px"><div class="chart-card"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-users"></i> Rendimiento por Trabajador</h3></div><div class="chart-container"><canvas id="workerPerformanceChart"></canvas></div></div><div class="chart-card"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-exclamation-circle"></i> Tareas por Prioridad</h3></div><div class="chart-container"><canvas id="priorityChart"></canvas></div></div><div class="chart-card"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-hourglass-half"></i> Tiempo por Tipo</h3></div><div class="chart-container"><canvas id="timeByTypeChart"></canvas></div></div></div>
+                <div class="chart-card" style="margin-top:24px"><div class="chart-header"><h3 class="chart-title"><i class="fas fa-table"></i> Detalle de Tareas</h3><div style="font-size:0.8rem;color:var(--text-muted)">Base jornada: 9.5h (570 min)</div></div><div class="table-container" style="overflow-x:auto"><table class="data-table" id="tasksDetailTable"><thead><tr><th>Usuario</th><th>Tipo</th><th>Título</th><th>Estado</th><th>Creada</th><th>Tiempo</th><th>% Jornada</th></tr></thead><tbody id="tasksDetailBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Cargando datos...</td></tr></tbody><tfoot id="tasksDetailFooter"><tr><td colspan="7"></td></tr></tfoot></table></div></div>
             </div>
             <div class="view" id="workersView">
                 <div class="page-header"><div class="page-title"><h1>Trabajadores</h1><p>Rendimiento y estadísticas del equipo</p></div></div>
@@ -569,19 +593,130 @@
             btn.disabled = false; btn.innerHTML = originalText;
         }
         
-        async function handleLogout() { try { cleanupRealtime(); cleanupTimers(); await supabase.auth.signOut(); currentUser = null; currentProfile = null; showToast('Sesión cerrada', 'success'); } catch (error) { console.error('Logout error:', error); } }
+        async function handleLogout() { try { isManualCleanup = true; cleanupRealtime(); cleanupTimers(); await supabase.auth.signOut(); currentUser = null; currentProfile = null; isManualCleanup = false; showToast('Sesión cerrada', 'success'); } catch (error) { console.error('Logout error:', error); isManualCleanup = false; } }
         function cleanupTimers() { Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; if (timeUpdaterInterval) { clearInterval(timeUpdaterInterval); timeUpdaterInterval = null; } }
-        function cleanupRealtime() { if (realtimeChannel) { console.log('Limpiando canal realtime...'); supabase.removeChannel(realtimeChannel); realtimeChannel = null; } }
+        
+        // === REALTIME ROBUSTO ===
+        let isManualCleanup = false;
+        let isConnecting = false;
+        let reconnectTimeout = null;
+        const CHANNEL_NAME = 'taskflow-shared-changes'; // Canal FIJO compartido por todos
+        
+        function cleanupRealtime() {
+            if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
+            if (realtimeChannel) {
+                console.log('Limpiando canal realtime...');
+                try { supabase.removeChannel(realtimeChannel); } catch(e) { console.log('Error limpiando:', e); }
+                realtimeChannel = null;
+            }
+        }
 
         async function setupRealtime() {
-            cleanupRealtime(); const clientId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            const channelName = `taskflow-changes-${clientId}`; console.log('Configurando canal:', channelName);
-            realtimeChannel = supabase.channel(channelName, { config: { broadcast: { self: false }, presence: { key: currentUser?.id || 'anonymous' } } })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => { notifyPendingChange(); const tasksView = document.getElementById('tasksView'); if (tasksView?.classList.contains('active')) debouncedLoadTasks(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'task_sessions' }, () => { notifyPendingChange(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { notifyPendingChange(); })
-                .subscribe((status, err) => { console.log('Estado canal:', status); if (status === 'SUBSCRIBED') { updateConnectionStatus(true); reconnectAttempts = 0; } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') { updateConnectionStatus(false); if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) { reconnectAttempts++; setTimeout(setupRealtime, 3000 * reconnectAttempts); } } if (err) console.error('Error canal:', err); });
+            // Evitar múltiples conexiones simultáneas
+            if (isConnecting) { console.log('Ya conectando, ignorando...'); return; }
+            if (!currentUser) { console.log('Sin usuario, no conectar'); return; }
+            
+            // Si ya tenemos un canal activo y conectado, no reconectar
+            if (realtimeChannel && realtimeChannel.state === 'joined') {
+                console.log('Canal ya conectado, ignorando...'); return;
+            }
+            
+            isConnecting = true;
+            
+            // Limpiar canal anterior si existe (pero marcar como manual para no triggear reconexión)
+            if (realtimeChannel) {
+                isManualCleanup = true;
+                cleanupRealtime();
+                // Pequeño delay para que el servidor procese la desconexión
+                await new Promise(r => setTimeout(r, 500));
+                isManualCleanup = false;
+            }
+            
+            console.log('Configurando canal:', CHANNEL_NAME);
+            
+            try {
+                realtimeChannel = supabase.channel(CHANNEL_NAME, {
+                    config: { broadcast: { self: false } }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                    console.log('Cambio en tasks:', payload.eventType);
+                    notifyPendingChange();
+                    // Actualizar automáticamente si estamos en la vista de tareas
+                    const tasksView = document.getElementById('tasksView');
+                    if (tasksView?.classList.contains('active')) {
+                        debouncedLoadTasks();
+                    }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'task_sessions' }, (payload) => {
+                    console.log('Cambio en sessions:', payload.eventType);
+                    notifyPendingChange();
+                    // Si hay tarea abierta, actualizar detalle
+                    const tasksView = document.getElementById('tasksView');
+                    if (tasksView?.classList.contains('active')) {
+                        debouncedLoadTasks();
+                    }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                    console.log('Cambio en profiles');
+                    notifyPendingChange();
+                })
+                .subscribe((status, err) => {
+                    console.log('Estado canal:', status, err || '');
+                    isConnecting = false;
+                    
+                    switch(status) {
+                        case 'SUBSCRIBED':
+                            updateConnectionStatus(true);
+                            reconnectAttempts = 0;
+                            console.log('✅ Canal conectado exitosamente');
+                            break;
+                        case 'CHANNEL_ERROR':
+                            console.warn('⚠️ Error en canal:', err);
+                            updateConnectionStatus(false);
+                            scheduleReconnect();
+                            break;
+                        case 'TIMED_OUT':
+                            console.warn('⚠️ Timeout en canal');
+                            updateConnectionStatus(false);
+                            scheduleReconnect();
+                            break;
+                        case 'CLOSED':
+                            console.log('Canal cerrado');
+                            updateConnectionStatus(false);
+                            // Solo reconectar si NO fue una limpieza manual
+                            if (!isManualCleanup) {
+                                scheduleReconnect();
+                            }
+                            break;
+                    }
+                });
+            } catch (error) {
+                console.error('Error creando canal:', error);
+                isConnecting = false;
+                scheduleReconnect();
+            }
         }
+        
+        function scheduleReconnect() {
+            if (reconnectTimeout) return; // Ya hay uno programado
+            if (!currentUser) return; // No reconectar sin usuario
+            if (isManualCleanup) return; // No reconectar si estamos limpiando
+            
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempts - 1), 30000); // Exponential backoff, max 30s
+                console.log(`Reconectando en ${delay}ms (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+                
+                reconnectTimeout = setTimeout(() => {
+                    reconnectTimeout = null;
+                    setupRealtime();
+                }, delay);
+            } else {
+                console.error('❌ Máximo de reintentos alcanzado');
+                showToast('Conexión perdida. Por favor recarga la página.', 'error');
+            }
+        }
+        
         const debouncedLoadTasks = debounce(() => { loadTasks(); }, 1000);
 
         async function initApp() { console.log('Inicializando TaskFlow Pro...'); const { data: { session } } = await supabase.auth.getSession(); if (session) { currentUser = session.user; await loadUserProfile(); showApp(); } else showAuth(); supabase.auth.onAuthStateChange(async (event, session) => { console.log('Auth state:', event); if (event === 'SIGNED_IN' && session) { currentUser = session.user; await loadUserProfile(); showApp(); } else if (event === 'SIGNED_OUT') { currentUser = null; currentProfile = null; showAuth(); } }); }
@@ -669,24 +804,119 @@
 
         async function loadDashboard() {
             const period = document.getElementById('dashboardPeriod')?.value || 'week';
-            const { startDate, endDate } = getDateRange(period);
-            try { let query = supabase.from('tasks').select(`*, assigned_profile:profiles!tasks_assigned_to_fkey(full_name), task_sessions(duration_minutes, is_active)`); if (currentProfile?.role !== 'jefe') query = query.eq('assigned_to', currentUser.id); query = query.gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString()); const { data: tasks, error } = await query; if (error) throw error; if (tasks) { updateDashboardStats(tasks); updateCharts(tasks); } }
-            catch (error) { console.error('Error cargando dashboard:', error); }
+            const workerFilter = document.getElementById('dashboardWorker')?.value || '';
+            const typeFilter = document.getElementById('dashboardType')?.value || '';
+            const { startDate, endDate, label } = getDateRange(period);
+            const periodInfo = document.getElementById('dashboardPeriodInfo');
+            if (periodInfo) periodInfo.textContent = label;
+            if (currentProfile?.role === 'jefe') {
+                const dwf = document.getElementById('dashboardWorkerFilter');
+                if (dwf) dwf.style.display = 'flex';
+                await loadDashboardWorkersFilter();
+            }
+            try {
+                let query = supabase.from('tasks').select(`*, assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name), task_sessions(duration_minutes, is_active, start_time, end_time)`);
+                if (currentProfile?.role !== 'jefe') query = query.eq('assigned_to', currentUser.id);
+                if (workerFilter) query = query.eq('assigned_to', workerFilter);
+                if (typeFilter) query = query.eq('task_type', typeFilter);
+                query = query.gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString());
+                const { data: tasks, error } = await query;
+                if (error) throw error;
+                if (tasks) { updateDashboardStats(tasks); updateCharts(tasks); updateDetailTable(tasks); }
+            } catch (error) { console.error('Error cargando dashboard:', error); }
         }
 
-        function getDateRange(period) { const now = new Date(); let startDate; const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59); switch (period) { case 'week': const dayOfWeek = now.getDay(); startDate = new Date(now); startDate.setDate(now.getDate() - dayOfWeek); startDate.setHours(0, 0, 0, 0); break; case 'month': startDate = new Date(now.getFullYear(), now.getMonth(), 1); break; default: startDate = new Date(now.getFullYear() - 1, 0, 1); } return { startDate, endDate }; }
+        async function loadDashboardWorkersFilter() {
+            const select = document.getElementById('dashboardWorker'); if (!select || select.options.length > 1) return;
+            try { const { data: profiles } = await supabase.from('profiles').select('id, full_name').order('full_name');
+                (profiles || []).forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.full_name; select.appendChild(opt); });
+            } catch (e) { console.error(e); }
+        }
 
-        function updateDashboardStats(tasks) { const total = tasks.length; const completed = tasks.filter(t => t.status === 'completada').length; const totalMinutes = tasks.reduce((sum, task) => { const taskMinutes = (task.task_sessions || []).reduce((s, session) => s + (session.duration_minutes || 0), 0); return sum + taskMinutes; }, 0); const avgTime = completed > 0 ? Math.round(totalMinutes / completed) : 0; const efficiency = total > 0 ? Math.round((completed / total) * 100) : 0; document.getElementById('statTotalTasks').textContent = total; document.getElementById('statCompletedTasks').textContent = completed; document.getElementById('statAvgTime').textContent = formatDuration(avgTime); document.getElementById('statEfficiency').textContent = `${efficiency}%`; }
+        function getDateRange(period) {
+            const now = new Date(); let startDate, endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59), label = '';
+            switch (period) {
+                case 'today': startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); label = `Hoy: ${startDate.toLocaleDateString('es-ES')}`; break;
+                case 'yesterday': startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0); endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59); label = `Ayer: ${startDate.toLocaleDateString('es-ES')}`; break;
+                case 'week': const dow = now.getDay(); startDate = new Date(now); startDate.setDate(now.getDate() - dow); startDate.setHours(0, 0, 0, 0); label = `${startDate.toLocaleDateString('es-ES')} - ${endDate.toLocaleDateString('es-ES')}`; break;
+                case 'lastweek': const dow2 = now.getDay(); startDate = new Date(now); startDate.setDate(now.getDate() - dow2 - 7); startDate.setHours(0, 0, 0, 0); endDate = new Date(startDate); endDate.setDate(startDate.getDate() + 6); endDate.setHours(23, 59, 59); label = `${startDate.toLocaleDateString('es-ES')} - ${endDate.toLocaleDateString('es-ES')}`; break;
+                case 'month': startDate = new Date(now.getFullYear(), now.getMonth(), 1); label = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); break;
+                case 'lastmonth': startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); label = startDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); break;
+                default: startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1); label = 'Últimos 12 meses';
+            }
+            return { startDate, endDate, label };
+        }
+
+        function updateDashboardStats(tasks) {
+            const total = tasks.length, completed = tasks.filter(t => t.status === 'completada').length;
+            const totalMinutes = tasks.reduce((sum, task) => sum + (task.task_sessions || []).reduce((s, ses) => s + (ses.duration_minutes || 0), 0), 0);
+            const avgTime = completed > 0 ? Math.round(totalMinutes / completed) : 0;
+            const efficiency = total > 0 ? Math.round((completed / total) * 100) : 0;
+            document.getElementById('statTotalTasks').textContent = total;
+            document.getElementById('statCompletedTasks').textContent = completed;
+            document.getElementById('statAvgTime').textContent = formatDuration(avgTime);
+            document.getElementById('statEfficiency').textContent = `${efficiency}%`;
+        }
 
         function updateCharts(tasks) {
-            Object.values(charts).forEach(chart => { if (chart) chart.destroy(); }); charts = {};
+            Object.values(charts).forEach(c => c?.destroy()); charts = {};
             const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#a1a1aa';
-            const dailyData = {}; tasks.forEach(task => { const date = new Date(task.created_at).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }); if (!dailyData[date]) dailyData[date] = { created: 0, completed: 0 }; dailyData[date].created++; if (task.status === 'completada') dailyData[date].completed++; });
-            const productivityCtx = document.getElementById('productivityChart');
-            if (productivityCtx) { charts.productivity = new Chart(productivityCtx, { type: 'line', data: { labels: Object.keys(dailyData), datasets: [{ label: 'Completadas', data: Object.values(dailyData).map(d => d.completed), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4, borderWidth: 2 }, { label: 'Creadas', data: Object.values(dailyData).map(d => d.created), borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, 0.1)', fill: true, tension: 0.4, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } }, scales: { x: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true } } } }); }
+            const gridColor = 'rgba(255,255,255,0.05)';
+            // 1. Productividad por día
+            const dailyData = {};
+            tasks.forEach(t => { const d = new Date(t.created_at).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }); if (!dailyData[d]) dailyData[d] = { created: 0, completed: 0 }; dailyData[d].created++; if (t.status === 'completada') dailyData[d].completed++; });
+            const ctx1 = document.getElementById('productivityChart');
+            if (ctx1) charts.productivity = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(dailyData), datasets: [{ label: 'Completadas', data: Object.values(dailyData).map(d => d.completed), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 }, { label: 'Creadas', data: Object.values(dailyData).map(d => d.created), borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } }, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true } } } });
+            // 2. Distribución por tipo
             const typeData = { principal: tasks.filter(t => t.task_type === 'principal').length, gestion: tasks.filter(t => t.task_type === 'gestion').length, complementario: tasks.filter(t => t.task_type === 'complementario').length };
-            const distributionCtx = document.getElementById('typeDistributionChart');
-            if (distributionCtx) { charts.distribution = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['Principal', 'Gestión', 'Complementario'], datasets: [{ data: [typeData.principal, typeData.gestion, typeData.complementario], backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'], borderWidth: 0, hoverOffset: 10 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: textColor, padding: 20, usePointStyle: true } } } } }); }
+            const ctx2 = document.getElementById('typeDistributionChart');
+            if (ctx2) charts.distribution = new Chart(ctx2, { type: 'doughnut', data: { labels: ['Principal', 'Gestión', 'Complementario'], datasets: [{ data: [typeData.principal, typeData.gestion, typeData.complementario], backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: textColor, padding: 15, usePointStyle: true } } } } });
+            // 3. Rendimiento por trabajador
+            const workerData = {};
+            tasks.forEach(t => { const name = t.assigned_profile?.full_name || 'Sin asignar'; if (!workerData[name]) workerData[name] = { total: 0, completed: 0, time: 0 }; workerData[name].total++; if (t.status === 'completada') workerData[name].completed++; workerData[name].time += (t.task_sessions || []).reduce((s, ses) => s + (ses.duration_minutes || 0), 0); });
+            const ctx3 = document.getElementById('workerPerformanceChart');
+            if (ctx3) charts.workerPerf = new Chart(ctx3, { type: 'bar', data: { labels: Object.keys(workerData), datasets: [{ label: 'Completadas', data: Object.values(workerData).map(w => w.completed), backgroundColor: '#10b981' }, { label: 'Total', data: Object.values(workerData).map(w => w.total), backgroundColor: '#7c3aed' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } }, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true } } } });
+            // 4. Tareas por prioridad
+            const prioData = { alta: tasks.filter(t => t.priority === 'alta').length, media: tasks.filter(t => t.priority === 'media').length, baja: tasks.filter(t => t.priority === 'baja').length };
+            const ctx4 = document.getElementById('priorityChart');
+            if (ctx4) charts.priority = new Chart(ctx4, { type: 'bar', data: { labels: ['Alta', 'Media', 'Baja'], datasets: [{ label: 'Tareas', data: [prioData.alta, prioData.media, prioData.baja], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'] }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }, y: { ticks: { color: textColor }, grid: { color: gridColor } } } } });
+            // 5. Tiempo por tipo
+            const timeByType = { principal: 0, gestion: 0, complementario: 0 };
+            tasks.forEach(t => { const mins = (t.task_sessions || []).reduce((s, ses) => s + (ses.duration_minutes || 0), 0); timeByType[t.task_type] = (timeByType[t.task_type] || 0) + mins; });
+            const ctx5 = document.getElementById('timeByTypeChart');
+            if (ctx5) charts.timeType = new Chart(ctx5, { type: 'bar', data: { labels: ['Principal', 'Gestión', 'Complementario'], datasets: [{ label: 'Minutos', data: [timeByType.principal, timeByType.gestion, timeByType.complementario], backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'] }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, callback: v => formatDuration(v) }, grid: { color: gridColor }, beginAtZero: true }, y: { ticks: { color: textColor }, grid: { color: gridColor } } } } });
+        }
+
+        function updateDetailTable(tasks) {
+            const JORNADA_MINS = 570; // 9.5 horas
+            const tbody = document.getElementById('tasksDetailBody');
+            const tfoot = document.getElementById('tasksDetailFooter');
+            if (!tbody) return;
+            if (!tasks || tasks.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No hay tareas en este período</td></tr>'; tfoot.innerHTML = ''; return; }
+            let totalTime = 0;
+            const rows = tasks.map(t => {
+                const mins = (t.task_sessions || []).reduce((s, ses) => s + (ses.duration_minutes || 0), 0);
+                totalTime += mins;
+                const pctJornada = Math.round((mins / JORNADA_MINS) * 100);
+                const jornadaClass = pctJornada < 20 ? 'jornada-low' : pctJornada < 50 ? 'jornada-medium' : 'jornada-high';
+                return `<tr>
+                    <td><div style="display:flex;align-items:center;gap:8px"><div class="task-assignee-avatar">${(t.assigned_profile?.full_name || 'S').charAt(0)}</div>${t.assigned_profile?.full_name || 'Sin asignar'}</div></td>
+                    <td><span class="task-priority priority-${t.task_type === 'principal' ? 'alta' : t.task_type === 'gestion' ? 'media' : 'baja'}">${formatTaskType(t.task_type)}</span></td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.title}">${t.title}</td>
+                    <td><span class="task-status-badge status-${t.status}">${formatStatus(t.status)}</span></td>
+                    <td style="font-size:0.8rem;color:var(--text-muted)">${new Date(t.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</td>
+                    <td><strong>${formatDuration(mins)}</strong></td>
+                    <td><span class="jornada-badge ${jornadaClass}">${pctJornada}%</span></td>
+                </tr>`;
+            }).join('');
+            tbody.innerHTML = rows;
+            const avgTime = tasks.length > 0 ? Math.round(totalTime / tasks.length) : 0;
+            tfoot.innerHTML = `<tr><td colspan="7"><div class="summary-row">
+                <div class="summary-item"><span class="summary-label">Total tareas:</span><span class="summary-value">${tasks.length}</span></div>
+                <div class="summary-item"><span class="summary-label">Tiempo total:</span><span class="summary-value">${formatDuration(totalTime)}</span></div>
+                <div class="summary-item"><span class="summary-label">Promedio:</span><span class="summary-value">${formatDuration(avgTime)}</span></div>
+                <div class="summary-item"><span class="summary-label">% Jornada total:</span><span class="summary-value">${Math.round((totalTime / JORNADA_MINS) * 100)}%</span></div>
+            </div></td></tr>`;
         }
 
         async function loadWorkers() {
@@ -705,8 +935,32 @@
 
         document.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('active'); Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; } });
         document.addEventListener('DOMContentLoaded', () => { loadTheme(); initApp(); });
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentUser) { console.log('Página visible - reconectando...'); setupRealtime(); manualRefresh(); } });
-        setInterval(() => { if (currentUser && document.visibilityState === 'visible') { if (!realtimeChannel || realtimeChannel.state !== 'joined') { console.log('Canal desconectado - reconectando...'); setupRealtime(); } } }, 30000);
+        
+        // Reconectar cuando la página vuelve a estar visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && currentUser) {
+                console.log('Página visible - verificando conexión...');
+                // Solo reconectar si el canal no está activo
+                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
+                    console.log('Canal no conectado, iniciando reconexión...');
+                    reconnectAttempts = 0; // Reset para dar oportunidad
+                    setupRealtime();
+                }
+                // Siempre refrescar datos al volver
+                manualRefresh();
+            }
+        });
+        
+        // Verificación periódica de conexión (cada 60 segundos)
+        setInterval(() => {
+            if (currentUser && document.visibilityState === 'visible' && !isConnecting) {
+                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
+                    console.log('Verificación periódica: canal desconectado');
+                    reconnectAttempts = 0;
+                    setupRealtime();
+                }
+            }
+        }, 60000);
     </script>
 </body>
 </html>
