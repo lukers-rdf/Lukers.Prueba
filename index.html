@@ -1395,6 +1395,112 @@
             display: block;
         }
 
+        /* Update Section */
+        .update-section {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .update-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card-hover) 100%);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: var(--transition);
+            position: relative;
+            font-family: inherit;
+        }
+
+        .update-btn:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--primary-glow);
+        }
+
+        .update-btn:active {
+            transform: translateY(0);
+        }
+
+        .update-btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        .update-btn.has-updates {
+            border-color: var(--accent);
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 5px var(--accent); }
+            50% { box-shadow: 0 0 20px var(--accent), 0 0 30px var(--accent); }
+        }
+
+        .update-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounce 0.5s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .update-info {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .update-time {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .update-status {
+            display: block;
+            font-size: 0.7rem;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .update-status.has-changes {
+            color: var(--accent);
+            animation: fadeInOut 2s ease-in-out infinite;
+        }
+
+        .update-status.synced {
+            color: var(--success);
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Detail Table */
         .detail-table {
             width: 100%;
@@ -1605,6 +1711,19 @@
                 <div class="theme-toggle">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar tema"></button>
                     <span class="theme-toggle-label" id="themeLabel">Modo Oscuro</span>
+                </div>
+
+                <!-- Botón Actualizar con indicador -->
+                <div class="update-section">
+                    <button class="update-btn" onclick="manualRefresh()" id="updateBtn">
+                        <i class="fas fa-sync-alt" id="updateIcon"></i>
+                        <span>Actualizar</span>
+                        <span class="update-badge" id="updateBadge" style="display: none;">!</span>
+                    </button>
+                    <div class="update-info">
+                        <span class="update-time" id="lastUpdateTime">Actualizado ahora</span>
+                        <span class="update-status" id="updateStatus"></span>
+                    </div>
                 </div>
                 
                 <div class="user-info">
@@ -1974,6 +2093,131 @@
         let activeTimers = {};
         let realtimeChannel = null;
         const JEFE_SECRET_CODE = 'admin2024';
+        
+        // Sistema de actualización
+        let lastUpdateTime = new Date();
+        let pendingChanges = 0;
+        let pendingChangesList = [];
+
+        // ============================================
+        // SISTEMA DE ACTUALIZACIÓN
+        // ============================================
+        
+        function updateLastUpdateTime() {
+            lastUpdateTime = new Date();
+            pendingChanges = 0;
+            pendingChangesList = [];
+            
+            const timeEl = document.getElementById('lastUpdateTime');
+            const statusEl = document.getElementById('updateStatus');
+            const badge = document.getElementById('updateBadge');
+            const btn = document.getElementById('updateBtn');
+            
+            if (timeEl) {
+                timeEl.textContent = `Actualizado ${formatRelativeTime(lastUpdateTime)}`;
+            }
+            if (statusEl) {
+                statusEl.textContent = '✓ Todo sincronizado';
+                statusEl.className = 'update-status synced';
+            }
+            if (badge) {
+                badge.style.display = 'none';
+            }
+            if (btn) {
+                btn.classList.remove('has-updates');
+            }
+            
+            // Actualizar el tiempo relativo cada minuto
+            startTimeUpdater();
+        }
+        
+        let timeUpdaterInterval = null;
+        function startTimeUpdater() {
+            if (timeUpdaterInterval) clearInterval(timeUpdaterInterval);
+            timeUpdaterInterval = setInterval(() => {
+                const timeEl = document.getElementById('lastUpdateTime');
+                if (timeEl && lastUpdateTime) {
+                    timeEl.textContent = `Actualizado ${formatRelativeTime(lastUpdateTime)}`;
+                }
+            }, 30000); // Cada 30 segundos
+        }
+        
+        function formatRelativeTime(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSecs = Math.floor(diffMs / 1000);
+            const diffMins = Math.floor(diffSecs / 60);
+            const diffHours = Math.floor(diffMins / 60);
+            
+            if (diffSecs < 10) return 'ahora';
+            if (diffSecs < 60) return `hace ${diffSecs}s`;
+            if (diffMins < 60) return `hace ${diffMins}m`;
+            if (diffHours < 24) return `hace ${diffHours}h`;
+            return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function notifyPendingChange(type, data) {
+            // No notificar si el cambio lo hizo el usuario actual
+            if (data?.user_id === currentUser?.id || data?.created_by === currentUser?.id) {
+                return;
+            }
+            
+            pendingChanges++;
+            pendingChangesList.push({ type, data, time: new Date() });
+            
+            const badge = document.getElementById('updateBadge');
+            const statusEl = document.getElementById('updateStatus');
+            const btn = document.getElementById('updateBtn');
+            
+            if (badge) {
+                badge.textContent = pendingChanges > 9 ? '9+' : pendingChanges;
+                badge.style.display = 'flex';
+            }
+            if (statusEl) {
+                const changeText = pendingChanges === 1 ? '1 cambio nuevo' : `${pendingChanges} cambios nuevos`;
+                statusEl.textContent = `⚡ ${changeText}`;
+                statusEl.className = 'update-status has-changes';
+            }
+            if (btn) {
+                btn.classList.add('has-updates');
+            }
+            
+            // Mostrar toast discreto
+            showToast(`Hay ${pendingChanges} actualización${pendingChanges > 1 ? 'es' : ''} disponible${pendingChanges > 1 ? 's' : ''}`, 'warning');
+        }
+        
+        async function manualRefresh() {
+            const btn = document.getElementById('updateBtn');
+            const icon = document.getElementById('updateIcon');
+            
+            if (btn) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+            }
+            
+            try {
+                const activeView = document.querySelector('.view.active');
+                
+                if (activeView?.id === 'tasksView') {
+                    await loadTasks();
+                } else if (activeView?.id === 'dashboardView') {
+                    await loadDashboard();
+                } else if (activeView?.id === 'workersView') {
+                    await loadWorkers();
+                }
+                
+                updateLastUpdateTime();
+                showToast('Datos actualizados', 'success');
+                
+            } catch (error) {
+                showToast('Error al actualizar', 'error');
+            } finally {
+                if (btn) {
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                }
+            }
+        }
 
         // ============================================
         // UTILIDADES
@@ -2189,22 +2433,44 @@
             
             realtimeChannel = supabase
                 .channel('taskflow-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-                    const activeView = document.querySelector('.view.active');
-                    if (activeView?.id === 'tasksView') loadTasks();
-                    else if (activeView?.id === 'dashboardView') loadDashboard();
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                    // Notificar si el cambio no fue del usuario actual
+                    const changedBy = payload.new?.created_by || payload.new?.assigned_to || payload.old?.created_by;
+                    if (changedBy !== currentUser?.id) {
+                        notifyPendingChange('task', payload.new || payload.old);
+                    } else {
+                        // Si fue el usuario actual, actualizar silenciosamente
+                        const activeView = document.querySelector('.view.active');
+                        if (activeView?.id === 'tasksView') loadTasks();
+                        else if (activeView?.id === 'dashboardView') loadDashboard();
+                        updateLastUpdateTime();
+                    }
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'task_sessions' }, () => {
-                    const activeView = document.querySelector('.view.active');
-                    if (activeView?.id === 'tasksView') loadTasks();
-                    else if (activeView?.id === 'dashboardView') loadDashboard();
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'task_sessions' }, (payload) => {
+                    const changedBy = payload.new?.user_id || payload.old?.user_id;
+                    if (changedBy !== currentUser?.id) {
+                        notifyPendingChange('session', payload.new || payload.old);
+                    } else {
+                        const activeView = document.querySelector('.view.active');
+                        if (activeView?.id === 'tasksView') loadTasks();
+                        else if (activeView?.id === 'dashboardView') loadDashboard();
+                        updateLastUpdateTime();
+                    }
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-                    const activeView = document.querySelector('.view.active');
-                    if (activeView?.id === 'workersView') loadWorkers();
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+                    if (payload.new?.id !== currentUser?.id) {
+                        notifyPendingChange('profile', payload.new || payload.old);
+                    } else {
+                        const activeView = document.querySelector('.view.active');
+                        if (activeView?.id === 'workersView') loadWorkers();
+                        updateLastUpdateTime();
+                    }
                 })
                 .subscribe((status) => {
                     updateConnectionStatus(status === 'SUBSCRIBED');
+                    if (status === 'SUBSCRIBED') {
+                        updateLastUpdateTime();
+                    }
                 });
         }
 
@@ -2331,6 +2597,7 @@
             }
 
             renderTasks(tasks || []);
+            updateLastUpdateTime();
         }
 
         function renderTasks(tasks) {
@@ -2773,6 +3040,7 @@
                 updateDashboardStats(tasks);
                 updateCharts(tasks);
                 loadTaskDetailTable(tasks);
+                updateLastUpdateTime();
             }
         }
 
@@ -3040,6 +3308,7 @@
 
             renderWorkers(workersWithStats);
             updateWorkersStats(workersWithStats);
+            updateLastUpdateTime();
         }
 
         function renderWorkers(workers) {
