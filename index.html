@@ -566,11 +566,43 @@
             if (btn) btn.classList.add('has-updates');
         }
         
+        // Debounce para manualRefresh para evitar múltiples llamadas
+        let refreshTimeout = null;
+        let lastRefreshTime = 0;
+        const MIN_REFRESH_INTERVAL = 2000; // Mínimo 2 segundos entre refrescos
+        
         async function manualRefresh() {
-            const btn = document.getElementById('updateBtn'); if (btn) { btn.classList.add('loading'); btn.disabled = true; }
-            try { const activeView = document.querySelector('.view.active'); if (activeView?.id === 'tasksView') await loadTasks(); else if (activeView?.id === 'dashboardView') await loadDashboard(); else if (activeView?.id === 'workersView') await loadWorkers(); updateLastUpdateTime(); showToast('Datos actualizados', 'success'); }
-            catch (e) { console.error('Error:', e); showToast('Error al actualizar', 'error'); }
-            finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
+            const now = Date.now();
+            if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+                console.log('Refresh muy reciente, saltando...');
+                return;
+            }
+            lastRefreshTime = now;
+            
+            const btn = document.getElementById('updateBtn');
+            if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+            
+            try {
+                const activeView = document.querySelector('.view.active');
+                if (activeView?.id === 'tasksView') {
+                    // Forzar reset del flag por si quedó atascado
+                    isLoadingTasks = false;
+                    await loadTasks();
+                } else if (activeView?.id === 'dashboardView') {
+                    await loadDashboard();
+                } else if (activeView?.id === 'workersView') {
+                    await loadWorkers();
+                }
+                updateLastUpdateTime();
+                pendingChanges = 0;
+                const statusEl = document.getElementById('updateStatus');
+                if (statusEl) { statusEl.textContent = '✓ Todo sincronizado'; statusEl.className = 'update-status'; }
+            } catch (e) {
+                console.error('Error en refresh:', e);
+                showToast('Error al actualizar', 'error');
+            } finally {
+                if (btn) { btn.classList.remove('loading'); btn.disabled = false; btn.classList.remove('has-updates'); }
+            }
         }
         
         function toggleTheme() { const html = document.documentElement, currentTheme = html.getAttribute('data-theme'), newTheme = currentTheme === 'light' ? '' : 'light'; html.setAttribute('data-theme', newTheme); localStorage.setItem('taskflow-theme', newTheme ? 'light' : 'dark'); const label = document.getElementById('themeLabel'); if (label) label.textContent = newTheme ? 'Modo Claro' : 'Modo Oscuro'; if (Object.keys(charts).length > 0) loadDashboard(); }
@@ -730,35 +762,131 @@
         function showView(viewName) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); const view = document.getElementById(`${viewName}View`); if (view) view.classList.add('active'); if (event && event.target) { const navItem = event.target.closest('.nav-item'); if (navItem) navItem.classList.add('active'); } if (viewName === 'dashboard') loadDashboard(); else if (viewName === 'workers') loadWorkers(); else if (viewName === 'tasks') loadTasks(); }
 
         async function loadTasks() {
-            if (isLoadingTasks) return; isLoadingTasks = true;
+            // Evitar llamadas simultáneas, pero con timeout de seguridad
+            if (isLoadingTasks) {
+                console.log('loadTasks ya en ejecución, saltando...');
+                return;
+            }
+            isLoadingTasks = true;
+            
             const columns = { principal: document.getElementById('columnPrincipal'), gestion: document.getElementById('columnGestion'), complementario: document.getElementById('columnComplementario') };
             Object.values(columns).forEach(col => { if (col) col.innerHTML = `<div class="loading"><div class="spinner"></div><span class="loading-text">Cargando...</span></div>`; });
+            
+            // Timeout de seguridad para evitar loading infinito
+            const loadingTimeout = setTimeout(() => {
+                console.warn('Timeout en loadTasks - reseteando...');
+                isLoadingTasks = false;
+            }, 15000);
+            
             try {
-                const statusFilter = document.getElementById('filterStatus')?.value, priorityFilter = document.getElementById('filterPriority')?.value, workerFilter = document.getElementById('filterWorker')?.value;
-                let query = supabase.from('tasks').select(`id, title, description, task_type, priority, status, created_at, assigned_to, created_by, assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name), created_profile:profiles!tasks_created_by_fkey(id, full_name), task_sessions(id, duration_minutes, is_active, start_time)`).order('created_at', { ascending: false });
-                if (statusFilter) query = query.eq('status', statusFilter); if (priorityFilter) query = query.eq('priority', priorityFilter); if (workerFilter) query = query.eq('assigned_to', workerFilter);
-                const { data: tasks, error } = await query; if (error) throw error;
-                console.log(`Tareas: ${tasks?.length || 0}`); renderTasks(tasks || []); updateLastUpdateTime();
-            } catch (error) { console.error('Error tareas:', error); Object.values(columns).forEach(col => { if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar</p></div>`; }); showToast('Error al cargar tareas', 'error'); }
-            finally { isLoadingTasks = false; }
+                const statusFilter = document.getElementById('filterStatus')?.value;
+                const priorityFilter = document.getElementById('filterPriority')?.value;
+                const workerFilter = document.getElementById('filterWorker')?.value;
+                
+                let query = supabase.from('tasks').select(`
+                    id, title, description, task_type, priority, status, created_at, assigned_to, created_by,
+                    assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name),
+                    created_profile:profiles!tasks_created_by_fkey(id, full_name),
+                    task_sessions(id, duration_minutes, is_active, start_time)
+                `).order('created_at', { ascending: false });
+                
+                if (statusFilter) query = query.eq('status', statusFilter);
+                if (priorityFilter) query = query.eq('priority', priorityFilter);
+                if (workerFilter) query = query.eq('assigned_to', workerFilter);
+                
+                const { data: tasks, error } = await query;
+                
+                clearTimeout(loadingTimeout);
+                
+                if (error) throw error;
+                
+                console.log(`Tareas cargadas: ${tasks?.length || 0}`);
+                renderTasks(tasks || []);
+                updateLastUpdateTime();
+            } catch (error) {
+                clearTimeout(loadingTimeout);
+                console.error('Error cargando tareas:', error);
+                Object.values(columns).forEach(col => {
+                    if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar</p></div>`;
+                });
+                showToast('Error al cargar tareas', 'error');
+            } finally {
+                isLoadingTasks = false;
+            }
         }
 
         function renderTasks(tasks) {
-            const columns = { principal: document.getElementById('columnPrincipal'), gestion: document.getElementById('columnGestion'), complementario: document.getElementById('columnComplementario') };
-            const counts = { principal: 0, gestion: 0, complementario: 0 };
-            Object.values(columns).forEach(col => { if (col) col.innerHTML = ''; });
-            if (!tasks || tasks.length === 0) { Object.values(columns).forEach(col => { if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`; }); document.getElementById('countPrincipal').textContent = '0'; document.getElementById('countGestion').textContent = '0'; document.getElementById('countComplementario').textContent = '0'; return; }
-            tasks.forEach(task => {
-                const column = columns[task.task_type]; if (!column) return; counts[task.task_type]++;
-                const totalMinutes = (task.task_sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                const hasActiveSession = (task.task_sessions || []).some(s => s.is_active);
-                const assigneeName = task.assigned_profile?.full_name || 'Sin asignar';
-                const card = document.createElement('div'); card.className = 'task-card'; card.onclick = () => openTaskDetail(task);
-                card.innerHTML = `<div class="task-card-header"><span class="task-priority priority-${task.priority}">${task.priority}</span><span class="task-status-badge status-${task.status}">${hasActiveSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span></div><div class="task-title">${task.title || 'Sin título'}</div><div class="task-meta"><div class="task-assignee"><div class="task-assignee-avatar">${assigneeName.charAt(0).toUpperCase()}</div><span>${assigneeName}</span></div>${totalMinutes > 0 ? `<span class="task-time"><i class="fas fa-clock"></i>${formatDuration(totalMinutes)}</span>` : ''}</div>`;
-                column.appendChild(card);
-            });
-            Object.keys(columns).forEach(type => { if (counts[type] === 0 && columns[type]) columns[type].innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`; });
-            document.getElementById('countPrincipal').textContent = counts.principal; document.getElementById('countGestion').textContent = counts.gestion; document.getElementById('countComplementario').textContent = counts.complementario;
+            console.log('renderTasks iniciando...', tasks?.length || 0);
+            try {
+                const columns = {
+                    principal: document.getElementById('columnPrincipal'),
+                    gestion: document.getElementById('columnGestion'),
+                    complementario: document.getElementById('columnComplementario')
+                };
+                const counts = { principal: 0, gestion: 0, complementario: 0 };
+                
+                // Limpiar columnas
+                Object.values(columns).forEach(col => { if (col) col.innerHTML = ''; });
+                
+                if (!tasks || tasks.length === 0) {
+                    Object.values(columns).forEach(col => {
+                        if (col) col.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
+                    });
+                    document.getElementById('countPrincipal').textContent = '0';
+                    document.getElementById('countGestion').textContent = '0';
+                    document.getElementById('countComplementario').textContent = '0';
+                    console.log('renderTasks: sin tareas');
+                    return;
+                }
+                
+                tasks.forEach(task => {
+                    const column = columns[task.task_type];
+                    if (!column) {
+                        console.warn('Columna no encontrada para tipo:', task.task_type);
+                        return;
+                    }
+                    counts[task.task_type]++;
+                    
+                    const totalMinutes = (task.task_sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+                    const hasActiveSession = (task.task_sessions || []).some(s => s.is_active);
+                    const assigneeName = task.assigned_profile?.full_name || 'Sin asignar';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.onclick = () => openTaskDetail(task);
+                    card.innerHTML = `
+                        <div class="task-card-header">
+                            <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                            <span class="task-status-badge status-${task.status}">${hasActiveSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
+                        </div>
+                        <div class="task-title">${task.title || 'Sin título'}</div>
+                        <div class="task-meta">
+                            <div class="task-assignee">
+                                <div class="task-assignee-avatar">${assigneeName.charAt(0).toUpperCase()}</div>
+                                <span>${assigneeName}</span>
+                            </div>
+                            ${totalMinutes > 0 ? `<span class="task-time"><i class="fas fa-clock"></i>${formatDuration(totalMinutes)}</span>` : ''}
+                        </div>
+                    `;
+                    column.appendChild(card);
+                });
+                
+                // Mostrar mensaje vacío en columnas sin tareas
+                Object.keys(columns).forEach(type => {
+                    if (counts[type] === 0 && columns[type]) {
+                        columns[type].innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>`;
+                    }
+                });
+                
+                // Actualizar contadores
+                document.getElementById('countPrincipal').textContent = counts.principal;
+                document.getElementById('countGestion').textContent = counts.gestion;
+                document.getElementById('countComplementario').textContent = counts.complementario;
+                
+                console.log('renderTasks completado:', counts);
+            } catch (error) {
+                console.error('Error en renderTasks:', error);
+            }
         }
 
         async function openNewTaskModal() { document.getElementById('newTaskModal').classList.add('active'); await loadAssignees(); }
@@ -775,21 +903,78 @@
         }
 
         async function openTaskDetail(task) {
-            document.getElementById('taskDetailModal').classList.add('active'); document.getElementById('taskDetailContent').innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+            if (!task || !task.id) {
+                console.error('Tarea inválida:', task);
+                showToast('Error: tarea no válida', 'error');
+                return;
+            }
+            
+            document.getElementById('taskDetailModal').classList.add('active');
+            document.getElementById('taskDetailContent').innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+            
+            // Timeout de seguridad
+            const detailTimeout = setTimeout(() => {
+                console.warn('Timeout cargando detalle de tarea');
+                document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Tiempo de espera agotado. Intenta de nuevo.</p></div>`;
+            }, 10000);
+            
             try {
-                const { data: sessions, error: sessionsError } = await supabase.from('task_sessions').select('*').eq('task_id', task.id).order('start_time', { ascending: false }); if (sessionsError) throw sessionsError;
+                const { data: sessions, error: sessionsError } = await supabase
+                    .from('task_sessions')
+                    .select('*')
+                    .eq('task_id', task.id)
+                    .order('start_time', { ascending: false });
+                
+                clearTimeout(detailTimeout);
+                
+                if (sessionsError) throw sessionsError;
+                
                 const activeSession = (sessions || []).find(s => s.is_active);
                 const totalMinutes = (sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                const isOwner = task.assigned_to === currentUser?.id, isJefe = currentProfile?.role === 'jefe', canControl = isOwner || isJefe;
+                const isOwner = task.assigned_to === currentUser?.id;
+                const isJefe = currentProfile?.role === 'jefe';
+                const canControl = isOwner || isJefe;
+                
                 let actionsHTML = '';
                 if (task.status !== 'completada') {
-                    if (!activeSession && (task.status === 'pendiente' || task.status === 'pausada')) { const btnText = task.status === 'pausada' ? 'Reanudar' : 'Iniciar'; actionsHTML += `<button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled title="No tienes permiso"' : ''}><i class="fas fa-play"></i> ${btnText}</button>`; }
-                    if (activeSession) { actionsHTML += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede pausar"' : ''}><i class="fas fa-pause"></i> Pausar</button>`; actionsHTML += `<button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede completar"' : ''}><i class="fas fa-check"></i> Completar</button>`; }
+                    if (!activeSession && (task.status === 'pendiente' || task.status === 'pausada')) {
+                        const btnText = task.status === 'pausada' ? 'Reanudar' : 'Iniciar';
+                        actionsHTML += `<button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled title="No tienes permiso"' : ''}><i class="fas fa-play"></i> ${btnText}</button>`;
+                    }
+                    if (activeSession) {
+                        actionsHTML += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede pausar"' : ''}><i class="fas fa-pause"></i> Pausar</button>`;
+                        actionsHTML += `<button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede completar"' : ''}><i class="fas fa-check"></i> Completar</button>`;
+                    }
                 }
                 if (isJefe) actionsHTML += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')"><i class="fas fa-trash"></i> Eliminar</button>`;
-                document.getElementById('taskDetailContent').innerHTML = `<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap"><span class="task-priority priority-${task.priority}">${task.priority}</span><span class="task-status-badge status-${task.status}">${activeSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span></div><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:12px">${task.title}</h2>${task.description ? `<p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6">${task.description}</p>` : ''}<div class="time-tracker"><div class="time-display" id="timerDisplay-${task.id}">${formatDuration(totalMinutes)}</div>${activeSession ? `<div class="time-status active"><span class="time-status-dot"></span>En progreso</div>` : ''}</div><div class="task-detail-meta"><div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${formatTaskType(task.task_type)}</div></div><div class="meta-item"><div class="meta-label">Asignado a</div><div class="meta-value">${task.assigned_profile?.full_name || 'N/A'}</div></div><div class="meta-item"><div class="meta-label">Creado por</div><div class="meta-value">${task.created_profile?.full_name || 'N/A'}</div></div><div class="meta-item"><div class="meta-label">Fecha de creación</div><div class="meta-value">${new Date(task.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div></div><div class="task-actions">${actionsHTML}</div>${!isJefe && task.status !== 'completada' && activeSession ? `<div class="info-note"><i class="fas fa-info-circle"></i>Solo el jefe puede completar o pausar las tareas</div>` : ''}`;
+                
+                document.getElementById('taskDetailContent').innerHTML = `
+                    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+                        <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                        <span class="task-status-badge status-${task.status}">${activeSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
+                    </div>
+                    <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:12px">${task.title}</h2>
+                    ${task.description ? `<p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6">${task.description}</p>` : ''}
+                    <div class="time-tracker">
+                        <div class="time-display" id="timerDisplay-${task.id}">${formatDuration(totalMinutes)}</div>
+                        ${activeSession ? `<div class="time-status active"><span class="time-status-dot"></span>En progreso</div>` : ''}
+                    </div>
+                    <div class="task-detail-meta">
+                        <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${formatTaskType(task.task_type)}</div></div>
+                        <div class="meta-item"><div class="meta-label">Asignado a</div><div class="meta-value">${task.assigned_profile?.full_name || 'N/A'}</div></div>
+                        <div class="meta-item"><div class="meta-label">Creado por</div><div class="meta-value">${task.created_profile?.full_name || 'N/A'}</div></div>
+                        <div class="meta-item"><div class="meta-label">Fecha de creación</div><div class="meta-value">${new Date(task.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>
+                    </div>
+                    <div class="task-actions">${actionsHTML}</div>
+                    ${!isJefe && task.status !== 'completada' && activeSession ? `<div class="info-note"><i class="fas fa-info-circle"></i>Solo el jefe puede completar o pausar las tareas</div>` : ''}
+                `;
+                
                 if (activeSession) startVisualTimer(task.id, activeSession.start_time, totalMinutes);
-            } catch (error) { console.error('Error cargando detalle:', error); document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar los detalles</p></div>`; }
+            } catch (error) {
+                clearTimeout(detailTimeout);
+                console.error('Error cargando detalle:', error);
+                document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar los detalles</p><button class="btn btn-primary btn-sm" onclick="closeModal('taskDetailModal')">Cerrar</button></div>`;
+            }
         }
 
         function startVisualTimer(taskId, startTime, baseMinutes) { const display = document.getElementById(`timerDisplay-${taskId}`); if (!display) return; if (activeTimers[taskId]) clearInterval(activeTimers[taskId]); const startDate = new Date(startTime); activeTimers[taskId] = setInterval(() => { const now = new Date(); const elapsedMs = now - startDate; const elapsedMins = Math.floor(elapsedMs / 60000); const totalMins = baseMinutes + elapsedMins; if (display) display.textContent = formatDuration(totalMins); }, 1000); }
@@ -936,18 +1121,24 @@
         document.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('active'); Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; } });
         document.addEventListener('DOMContentLoaded', () => { loadTheme(); initApp(); });
         
-        // Reconectar cuando la página vuelve a estar visible
+        // Reconectar cuando la página vuelve a estar visible (con debounce)
+        let visibilityTimeout = null;
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && currentUser) {
-                console.log('Página visible - verificando conexión...');
-                // Solo reconectar si el canal no está activo
-                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
-                    console.log('Canal no conectado, iniciando reconexión...');
-                    reconnectAttempts = 0; // Reset para dar oportunidad
-                    setupRealtime();
-                }
-                // Siempre refrescar datos al volver
-                manualRefresh();
+                // Usar debounce para evitar múltiples llamadas
+                if (visibilityTimeout) clearTimeout(visibilityTimeout);
+                
+                visibilityTimeout = setTimeout(() => {
+                    console.log('Página visible - verificando conexión...');
+                    // Solo reconectar si el canal no está activo
+                    if (!realtimeChannel || realtimeChannel.state !== 'joined') {
+                        console.log('Canal no conectado, iniciando reconexión...');
+                        reconnectAttempts = 0;
+                        setupRealtime();
+                    }
+                    // Refrescar datos
+                    manualRefresh();
+                }, 500); // Esperar 500ms antes de actuar
             }
         });
         
