@@ -809,39 +809,41 @@
             document.getElementById('countComplementario').textContent = counts.complementario;
         }
 
-        async function openNewTaskModal() { document.getElementById('newTaskModal').classList.add('active'); await loadAssignees(); }
+        async function openNewTaskModal() { document.getElementById('newTaskModal').classList.add('active'); loadAssignees(); }
         
-        async function loadAssignees() {
+        function loadAssignees() {
             const select = document.getElementById('taskAssignee');
             select.innerHTML = '<option value="">Cargando...</option>';
             
-            try {
-                const { data: profiles, error } = await supabase
-                    .from('profiles')
-                    .select('id, full_name, role')
-                    .order('full_name');
-                
-                if (error) throw error;
-                
-                select.innerHTML = '';
-                
-                if (!profiles || profiles.length === 0) {
-                    select.innerHTML = '<option value="">No hay usuarios registrados</option>';
-                    return;
-                }
-                
-                profiles.forEach(profile => {
-                    const option = document.createElement('option');
-                    option.value = profile.id;
-                    option.textContent = `${profile.full_name || 'Sin nombre'} (${profile.role || 'trabajador'})`;
-                    if (currentUser && profile.id === currentUser.id) option.selected = true;
-                    select.appendChild(option);
+            supabase.from('profiles').select('id, full_name, role').order('full_name')
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error('Error profiles:', error);
+                        select.innerHTML = '<option value="">Error: ' + error.message + '</option>';
+                        showToast('Error RLS: Verifica permisos en Supabase', 'error');
+                        return;
+                    }
+                    
+                    console.log('Profiles encontrados:', data);
+                    
+                    if (!data || data.length === 0) {
+                        select.innerHTML = '<option value="">No hay usuarios</option>';
+                        return;
+                    }
+                    
+                    select.innerHTML = '';
+                    data.forEach(profile => {
+                        const option = document.createElement('option');
+                        option.value = profile.id;
+                        option.textContent = `${profile.full_name || 'Sin nombre'} (${profile.role || 'trabajador'})`;
+                        if (currentUser && profile.id === currentUser.id) option.selected = true;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error catch:', err);
+                    select.innerHTML = '<option value="">Error de conexión</option>';
                 });
-            } catch (error) {
-                console.error('Error cargando asignados:', error);
-                select.innerHTML = '<option value="">Error al cargar usuarios</option>';
-                showToast('Error al cargar usuarios: ' + error.message, 'error');
-            }
         }
         async function loadWorkersFilter() { try { const { data: profiles, error } = await supabase.from('profiles').select('id, full_name').order('full_name'); if (error) throw error; const select = document.getElementById('filterWorker'); select.innerHTML = '<option value="">Todos</option>'; (profiles || []).forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = profile.full_name; select.appendChild(option); }); } catch (error) { console.error('Error filtro trabajadores:', error); } }
 
