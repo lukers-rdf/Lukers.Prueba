@@ -824,68 +824,55 @@
 
         async function openTaskDetail(task) {
             if (!task || !task.id) {
-                console.error('Tarea inválida:', task);
                 showToast('Error: tarea no válida', 'error');
                 return;
             }
             
             document.getElementById('taskDetailModal').classList.add('active');
-            document.getElementById('taskDetailContent').innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
             
-            try {
-                const { data: sessions, error: sessionsError } = await supabase
-                    .from('task_sessions')
-                    .select('*')
-                    .eq('task_id', task.id)
-                    .order('start_time', { ascending: false });
-                
-                if (sessionsError) throw sessionsError;
-                
-                const activeSession = (sessions || []).find(s => s.is_active);
-                const totalMinutes = (sessions || []).filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                const isOwner = task.assigned_to === currentUser?.id;
-                const isJefe = currentProfile?.role === 'jefe';
-                const canControl = isOwner || isJefe;
-                
-                let actionsHTML = '';
-                if (task.status !== 'completada') {
-                    if (!activeSession && (task.status === 'pendiente' || task.status === 'pausada')) {
-                        const btnText = task.status === 'pausada' ? 'Reanudar' : 'Iniciar';
-                        actionsHTML += `<button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled title="No tienes permiso"' : ''}><i class="fas fa-play"></i> ${btnText}</button>`;
-                    }
-                    if (activeSession) {
-                        actionsHTML += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede pausar"' : ''}><i class="fas fa-pause"></i> Pausar</button>`;
-                        actionsHTML += `<button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede completar"' : ''}><i class="fas fa-check"></i> Completar</button>`;
-                    }
+            // Usar los datos que ya vienen con la tarea (task_sessions)
+            const sessions = task.task_sessions || [];
+            const activeSession = sessions.find(s => s.is_active);
+            const totalMinutes = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+            const isOwner = task.assigned_to === currentUser?.id;
+            const isJefe = currentProfile?.role === 'jefe';
+            const canControl = isOwner || isJefe;
+            
+            let actionsHTML = '';
+            if (task.status !== 'completada') {
+                if (!activeSession && (task.status === 'pendiente' || task.status === 'pausada')) {
+                    const btnText = task.status === 'pausada' ? 'Reanudar' : 'Iniciar';
+                    actionsHTML += `<button class="btn btn-success btn-sm" onclick="startTask('${task.id}')" ${!canControl ? 'disabled title="No tienes permiso"' : ''}><i class="fas fa-play"></i> ${btnText}</button>`;
                 }
-                if (isJefe) actionsHTML += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')"><i class="fas fa-trash"></i> Eliminar</button>`;
-                
-                document.getElementById('taskDetailContent').innerHTML = `
-                    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-                        <span class="task-priority priority-${task.priority}">${task.priority}</span>
-                        <span class="task-status-badge status-${task.status}">${activeSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
-                    </div>
-                    <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:12px">${task.title}</h2>
-                    ${task.description ? `<p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6">${task.description}</p>` : ''}
-                    <div class="time-tracker">
-                        <div class="time-display" id="timerDisplay-${task.id}">${formatDuration(totalMinutes)}</div>
-                        ${activeSession ? `<div class="time-status active"><span class="time-status-dot"></span>En progreso</div>` : ''}
-                    </div>
-                    <div class="task-detail-meta">
-                        <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${formatTaskType(task.task_type)}</div></div>
-                        <div class="meta-item"><div class="meta-label">Asignado a</div><div class="meta-value">${task.assigned_profile?.full_name || 'N/A'}</div></div>
-                        <div class="meta-item"><div class="meta-label">Creado por</div><div class="meta-value">${task.created_profile?.full_name || 'N/A'}</div></div>
-                        <div class="meta-item"><div class="meta-label">Fecha de creación</div><div class="meta-value">${new Date(task.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>
-                    </div>
-                    <div class="task-actions">${actionsHTML}</div>
-                    ${!isJefe && task.status !== 'completada' && activeSession ? `<div class="info-note"><i class="fas fa-info-circle"></i>Solo el jefe puede completar o pausar las tareas</div>` : ''}
-                `;
-                
-                if (activeSession) startVisualTimer(task.id, activeSession.start_time, totalMinutes);
-            } catch (error) {
-                console.error('Error cargando detalle:', error);
-                document.getElementById('taskDetailContent').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar los detalles</p><button class="btn btn-primary btn-sm" onclick="closeModal('taskDetailModal')">Cerrar</button></div>`;
+                if (activeSession) {
+                    actionsHTML += `<button class="btn btn-warning btn-sm" onclick="pauseTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede pausar"' : ''}><i class="fas fa-pause"></i> Pausar</button>`;
+                    actionsHTML += `<button class="btn btn-success btn-sm" onclick="completeTask('${task.id}')" ${!isJefe ? 'disabled title="Solo el jefe puede completar"' : ''}><i class="fas fa-check"></i> Completar</button>`;
+                }
             }
+            if (isJefe) actionsHTML += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')"><i class="fas fa-trash"></i> Eliminar</button>`;
+            
+            document.getElementById('taskDetailContent').innerHTML = `
+                <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+                    <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                    <span class="task-status-badge status-${task.status}">${activeSession ? '<span class="active-indicator"></span>' : ''}${formatStatus(task.status)}</span>
+                </div>
+                <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:12px">${task.title}</h2>
+                ${task.description ? `<p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6">${task.description}</p>` : ''}
+                <div class="time-tracker">
+                    <div class="time-display" id="timerDisplay-${task.id}">${formatDuration(totalMinutes)}</div>
+                    ${activeSession ? `<div class="time-status active"><span class="time-status-dot"></span>En progreso</div>` : ''}
+                </div>
+                <div class="task-detail-meta">
+                    <div class="meta-item"><div class="meta-label">Tipo</div><div class="meta-value">${formatTaskType(task.task_type)}</div></div>
+                    <div class="meta-item"><div class="meta-label">Asignado a</div><div class="meta-value">${task.assigned_profile?.full_name || 'N/A'}</div></div>
+                    <div class="meta-item"><div class="meta-label">Creado por</div><div class="meta-value">${task.created_profile?.full_name || 'N/A'}</div></div>
+                    <div class="meta-item"><div class="meta-label">Fecha de creación</div><div class="meta-value">${new Date(task.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>
+                </div>
+                <div class="task-actions">${actionsHTML}</div>
+                ${!isJefe && task.status !== 'completada' && activeSession ? `<div class="info-note"><i class="fas fa-info-circle"></i>Solo el jefe puede completar o pausar las tareas</div>` : ''}
+            `;
+            
+            if (activeSession) startVisualTimer(task.id, activeSession.start_time, totalMinutes);
         }
 
         function startVisualTimer(taskId, startTime, baseMinutes) { const display = document.getElementById(`timerDisplay-${taskId}`); if (!display) return; if (activeTimers[taskId]) clearInterval(activeTimers[taskId]); const startDate = new Date(startTime); activeTimers[taskId] = setInterval(() => { const now = new Date(); const elapsedMs = now - startDate; const elapsedMins = Math.floor(elapsedMs / 60000); const totalMins = baseMinutes + elapsedMins; if (display) display.textContent = formatDuration(totalMins); }, 1000); }
@@ -1031,27 +1018,6 @@
 
         document.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('active'); Object.values(activeTimers).forEach(timer => clearInterval(timer)); activeTimers = {}; } });
         document.addEventListener('DOMContentLoaded', () => { loadTheme(); initApp(); });
-        
-        // Verificar conexión cuando la página vuelve a estar visible
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && currentUser) {
-                // Solo verificar que el canal esté conectado, NO refrescar datos
-                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
-                    reconnectAttempts = 0;
-                    setupRealtime();
-                }
-            }
-        });
-        
-        // Verificación periódica de conexión (cada 2 minutos)
-        setInterval(() => {
-            if (currentUser && !isConnecting) {
-                if (!realtimeChannel || realtimeChannel.state !== 'joined') {
-                    reconnectAttempts = 0;
-                    setupRealtime();
-                }
-            }
-        }, 120000);
     </script>
 </body>
 </html>
