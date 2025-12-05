@@ -2219,21 +2219,6 @@
                             <div class="chart-container"><canvas id="workerStatusChart"></canvas></div>
                         </div>
                     </div>
-
-                    <div class="table-card">
-                        <div class="table-header">
-                            <i class="fas fa-table" style="color: var(--info); font-size: 1.25rem;"></i>
-                            <span class="table-title">Últimas Tareas Completadas</span>
-                        </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Prioridad</th><th>Tiempo</th><th>% Jornada</th></tr>
-                                </thead>
-                                <tbody id="dashboardTable"></tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Workers View -->
@@ -2317,6 +2302,21 @@
                                     </tr>
                                 </thead>
                                 <tbody id="productivityTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-card" style="margin-top: var(--space-6);">
+                        <div class="table-header">
+                            <i class="fas fa-table" style="color: var(--info); font-size: 1.25rem;"></i>
+                            <span class="table-title">Últimas Tareas Completadas</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Prioridad</th><th>Tiempo</th><th>% Jornada</th></tr>
+                                </thead>
+                                <tbody id="productivityCompletedTable"></tbody>
                             </table>
                         </div>
                     </div>
@@ -3813,23 +3813,6 @@
                     }
                 }
             });
-
-            // TABLA
-            document.getElementById('dashboardTable').innerHTML = filtered.slice(0, 10).map(t => {
-                const sessions = t.task_sessions || [];
-                const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                const workdayCalc = calculateWorkdayPercentage(totalMins);
-                
-                return `<tr>
-                    <td style="font-weight:600">${t.title}</td>
-                    <td>${formatTaskType(t.task_type)}</td>
-                    <td><span class="badge badge-${t.status === 'completada' ? 'success' : t.status === 'en_progreso' ? 'info' : 'muted'}">${formatStatus(t.status)}</span></td>
-                    <td>${t.assigned_profile?.full_name || 'N/A'}</td>
-                    <td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td>
-                    <td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td>
-                    <td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
         }
 
         function renderProgressRing(canvasId, value, total, color) {
@@ -4021,6 +4004,33 @@
                     <td><span class="badge badge-info">${d.completedTasks} tareas</span></td>
                 </tr>`;
             }).join('') || '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+            
+            // Renderizar tabla de últimas tareas completadas
+            const completedTasks = cachedTasks
+                .filter(t => {
+                    const taskDate = new Date(t.created_at);
+                    return t.status === 'completada' &&
+                           taskDate.getFullYear() === year &&
+                           taskDate.getMonth() === month;
+                })
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 10);
+            
+            document.getElementById('productivityCompletedTable').innerHTML = completedTasks.map(t => {
+                const sessions = t.task_sessions || [];
+                const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+                const workdayCalc = calculateWorkdayPercentage(totalMins);
+                
+                return `<tr>
+                    <td style="font-weight:600">${t.title}</td>
+                    <td>${formatTaskType(t.task_type)}</td>
+                    <td><span class="badge badge-success">${formatStatus(t.status)}</span></td>
+                    <td>${t.assigned_profile?.full_name || 'N/A'}</td>
+                    <td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td>
+                    <td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td>
+                    <td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas completadas en este período</td></tr>';
         }
 
         // ============================================
@@ -4170,7 +4180,7 @@
 
         loadTheme();
         initApp();
-        console.log('✅ TaskFlow Pro Ultra v4.9 - Validación Fecha/Hora + Solo Trabajadores + 2 Gráficas Nuevas');
+        console.log('✅ TaskFlow Pro Ultra v4.10 - Tabla de Tareas Completadas Movida a Productividad');
     </script>
 </body>
 </html>
