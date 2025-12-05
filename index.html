@@ -695,32 +695,32 @@
 
         /* FILTERS BAR PREMIUM */
         .filters-bar {
-            display: flex; align-items: center; gap: var(--space-5);
-            padding: var(--space-5); background: var(--bg-elevated);
+            display: flex; align-items: center; gap: var(--space-3);
+            padding: var(--space-4); background: var(--bg-elevated);
             border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-xl); margin-bottom: var(--space-8);
+            border-radius: var(--radius-lg); margin-bottom: var(--space-6);
             flex-wrap: wrap; box-shadow: var(--shadow-sm);
         }
 
         .filter-group {
-            display: flex; align-items: center; gap: var(--space-3);
+            display: flex; align-items: center; gap: var(--space-2);
             flex: 0 0 auto;
         }
 
         .filter-label {
-            font-size: 0.875rem; font-weight: 600;
+            font-size: 0.75rem; font-weight: 600;
             color: var(--text-muted);
             white-space: nowrap;
         }
 
         .filter-select {
-            padding: 10px 14px; padding-right: 40px;
-            font-size: 0.875rem; font-weight: 500;
+            padding: 6px 10px; padding-right: 32px;
+            font-size: 0.8125rem; font-weight: 500;
             background: var(--bg-muted);
             border: 1.5px solid var(--border-default);
             border-radius: var(--radius-md);
             color: var(--text-primary);
-            min-width: 120px;
+            min-width: 90px;
         }
 
         /* STATS GRID ULTRA */
@@ -1808,6 +1808,7 @@
                         <div class="filter-group">
                             <span class="filter-label">Año:</span>
                             <select class="filter-select" id="filterYear" onchange="updateTaskDateFilters();renderTasks()">
+                                <option value="">Todos</option>
                                 <!-- Se llena dinámicamente -->
                             </select>
                         </div>
@@ -1909,7 +1910,7 @@
                         </div>
                         <div class="filter-group">
                             <span class="filter-label">Mes:</span>
-                            <select class="filter-select" id="dashboardMonth" onchange="updateDaysInMonth(); renderDashboard()">
+                            <select class="filter-select" id="dashboardMonth" multiple size="3" onchange="updateDaysInMonth(); renderDashboard()" style="min-width:140px;padding:4px 8px">
                                 <option value="0">Enero</option>
                                 <option value="1">Febrero</option>
                                 <option value="2">Marzo</option>
@@ -1926,8 +1927,8 @@
                         </div>
                         <div class="filter-group">
                             <span class="filter-label">Día:</span>
-                            <select class="filter-select" id="dashboardDay" onchange="renderDashboard()">
-                                <option value="">Todo el mes</option>
+                            <select class="filter-select" id="dashboardDay" multiple size="3" onchange="renderDashboard()" style="min-width:100px;padding:4px 8px">
+                                <option value="" selected>Todo el mes</option>
                                 <!-- Se llena dinámicamente -->
                             </select>
                         </div>
@@ -2484,7 +2485,6 @@
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
-            const currentDay = now.getDate();
             
             // Llenar selector de años (últimos 5 años y próximos 2)
             const yearSelect = document.getElementById('dashboardYear');
@@ -2497,32 +2497,38 @@
                 yearSelect.appendChild(option);
             }
             
-            // Seleccionar mes actual
-            document.getElementById('dashboardMonth').value = currentMonth;
+            // Seleccionar mes actual por defecto
+            const monthSelect = document.getElementById('dashboardMonth');
+            Array.from(monthSelect.options).forEach(opt => {
+                opt.selected = parseInt(opt.value) === currentMonth;
+            });
             
             // Llenar días del mes actual
             updateDaysInMonth();
-            
-            // Seleccionar día actual
-            document.getElementById('dashboardDay').value = currentDay;
         }
 
         function updateDaysInMonth() {
             const year = parseInt(document.getElementById('dashboardYear').value);
-            const month = parseInt(document.getElementById('dashboardMonth').value);
+            const monthSelect = document.getElementById('dashboardMonth');
+            const selectedMonths = Array.from(monthSelect.selectedOptions).map(o => parseInt(o.value)).filter(v => !isNaN(v));
             const daySelect = document.getElementById('dashboardDay');
-            const currentDay = daySelect.value;
             
-            // Calcular días en el mes
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            daySelect.innerHTML = '<option value="" selected>Todo el mes</option>';
             
-            daySelect.innerHTML = '<option value="">Todo el mes</option>';
-            for (let day = 1; day <= daysInMonth; day++) {
-                const option = document.createElement('option');
-                option.value = day;
-                option.textContent = day;
-                if (day == currentDay) option.selected = true;
-                daySelect.appendChild(option);
+            // Solo llenar días si hay exactamente un mes seleccionado
+            if (selectedMonths.length === 1) {
+                const month = selectedMonths[0];
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const option = document.createElement('option');
+                    option.value = day;
+                    option.textContent = day;
+                    daySelect.appendChild(option);
+                }
+            } else {
+                // Si hay múltiples meses o ninguno, mostrar solo "Todo el mes"
+                daySelect.innerHTML = '<option value="" selected>N/A (múltiples meses)</option>';
             }
         }
 
@@ -2675,26 +2681,20 @@
         function initializeTaskDateFilters() {
             const now = new Date();
             const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth();
-            const currentDay = now.getDate();
             
             // Llenar selector de años
             const yearSelect = document.getElementById('filterYear');
-            yearSelect.innerHTML = '';
+            yearSelect.innerHTML = '<option value="">Todos</option>';
             for (let year = currentYear - 2; year <= currentYear + 1; year++) {
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year;
-                if (year === currentYear) option.selected = true;
                 yearSelect.appendChild(option);
             }
             
-            // Seleccionar mes actual
-            document.getElementById('filterMonth').value = currentMonth;
-            
-            // Actualizar días y seleccionar día actual
-            updateTaskDaysFilter();
-            document.getElementById('filterDay').value = currentDay;
+            // Sin valores predeterminados - usuario decide qué filtrar
+            document.getElementById('filterMonth').value = '';
+            document.getElementById('filterDay').innerHTML = '<option value="">Todos</option>';
         }
 
         function updateTaskDateFilters() {
@@ -3017,36 +3017,61 @@
         // ============================================
         function renderDashboard() {
             const year = parseInt(document.getElementById('dashboardYear').value);
-            const month = parseInt(document.getElementById('dashboardMonth').value);
-            const day = document.getElementById('dashboardDay').value;
+            const monthSelect = document.getElementById('dashboardMonth');
+            const daySelect = document.getElementById('dashboardDay');
+            
+            // Obtener meses y días seleccionados (múltiple selección)
+            const selectedMonths = Array.from(monthSelect.selectedOptions).map(o => parseInt(o.value)).filter(v => !isNaN(v));
+            const selectedDays = Array.from(daySelect.selectedOptions).map(o => o.value).filter(v => v !== '');
+            
+            // Variables auxiliares
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const isSingleDay = selectedDays.length === 1 && selectedMonths.length === 1;
+            const isSingleMonth = selectedMonths.length === 1 && selectedDays.length === 0;
             
             // Actualizar subtítulo del header
-            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             let subtitle = 'Métricas y estadísticas avanzadas';
-            if (day) {
-                subtitle = `Análisis del ${day} de ${monthNames[month]} ${year}`;
+            
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                if (selectedDays.length === 1) {
+                    subtitle = `Análisis del ${selectedDays[0]} de ${monthNames[selectedMonths[0]]} ${year}`;
+                } else {
+                    subtitle = `Análisis de días seleccionados en ${monthNames[selectedMonths[0]]} ${year}`;
+                }
+            } else if (selectedMonths.length > 0) {
+                if (selectedMonths.length === 1) {
+                    subtitle = `Análisis de ${monthNames[selectedMonths[0]]} ${year}`;
+                } else {
+                    subtitle = `Análisis de meses seleccionados en ${year}`;
+                }
             } else {
-                subtitle = `Análisis de ${monthNames[month]} ${year}`;
+                subtitle = `Análisis de ${year}`;
             }
             document.getElementById('headerSubtitle').textContent = subtitle;
             
             let filtered = [...cachedTasks];
             
             // Filtrar por fecha seleccionada
-            if (day) {
-                // Filtrar por día específico
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                // Filtrar por días específicos
                 filtered = filtered.filter(t => {
                     const taskDate = new Date(t.created_at);
                     return taskDate.getFullYear() === year && 
-                           taskDate.getMonth() === month && 
-                           taskDate.getDate() === parseInt(day);
+                           taskDate.getMonth() === selectedMonths[0] && 
+                           selectedDays.includes(taskDate.getDate().toString());
+                });
+            } else if (selectedMonths.length > 0) {
+                // Filtrar por meses seleccionados
+                filtered = filtered.filter(t => {
+                    const taskDate = new Date(t.created_at);
+                    return taskDate.getFullYear() === year && 
+                           selectedMonths.includes(taskDate.getMonth());
                 });
             } else {
-                // Filtrar por mes completo
+                // Filtrar por año completo
                 filtered = filtered.filter(t => {
                     const taskDate = new Date(t.created_at);
-                    return taskDate.getFullYear() === year && 
-                           taskDate.getMonth() === month;
+                    return taskDate.getFullYear() === year;
                 });
             }
 
@@ -3096,9 +3121,9 @@
             if (charts.trend) charts.trend.destroy();
             
             let trendLabels, trendData, trendTitle = 'Tendencia Semanal';
-            if (day) {
+            if (isSingleDay) {
                 // Mostrar por horas del día seleccionado
-                trendTitle = `Tendencia - Día ${day}`;
+                trendTitle = `Tendencia - Día ${selectedDays[0]}`;
                 trendLabels = ['8h', '10h', '12h', '14h', '16h', '18h'];
                 trendData = trendLabels.map((_, i) => {
                     const hour = 8 + (i * 2);
@@ -3107,9 +3132,9 @@
                         return taskDate.getHours() <= hour;
                     }).length;
                 });
-            } else {
+            } else if (isSingleMonth) {
                 // Mostrar últimos 7 días del mes
-                const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                const month = selectedMonths[0];
                 trendTitle = `Tendencia - ${monthNames[month]} ${year}`;
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 const startDay = Math.max(1, daysInMonth - 6);
@@ -3122,6 +3147,28 @@
                                taskDate.getDate() === parseInt(dayNum);
                     }).length;
                 });
+            } else {
+                // Múltiples períodos seleccionados
+                if (selectedMonths.length > 1) {
+                    trendTitle = `Tendencia - Meses Seleccionados`;
+                    trendLabels = selectedMonths.map(m => monthNames[m]);
+                    trendData = selectedMonths.map(m => {
+                        return cachedTasks.filter(t => {
+                            const taskDate = new Date(t.created_at);
+                            return taskDate.getFullYear() === year && taskDate.getMonth() === m;
+                        }).length;
+                    });
+                } else {
+                    // Todo el año
+                    trendTitle = `Tendencia - ${year}`;
+                    trendLabels = monthNames;
+                    trendData = monthNames.map((_, m) => {
+                        return cachedTasks.filter(t => {
+                            const taskDate = new Date(t.created_at);
+                            return taskDate.getFullYear() === year && taskDate.getMonth() === m;
+                        }).length;
+                    });
+                }
             }
             
             document.getElementById('trendChartCard').querySelector('.chart-title').textContent = trendTitle;
@@ -3130,14 +3177,15 @@
             // GRÁFICA DE ÁREA - Productividad
             if (charts.productivity) charts.productivity.destroy();
             const productivityData = trendLabels.map((label, i) => {
-                if (day) {
+                if (isSingleDay) {
                     const hour = 8 + (i * 2);
                     return filtered.filter(t => {
                         const taskDate = new Date(t.created_at);
                         return taskDate.getHours() <= hour && t.status === 'completada';
                     }).length;
-                } else {
+                } else if (isSingleMonth) {
                     const dayNum = parseInt(label);
+                    const month = selectedMonths[0];
                     return cachedTasks.filter(t => {
                         const taskDate = new Date(t.created_at);
                         return taskDate.getFullYear() === year && 
@@ -3145,9 +3193,28 @@
                                taskDate.getDate() === dayNum &&
                                t.status === 'completada';
                     }).length;
+                } else {
+                    // Múltiples períodos
+                    if (selectedMonths.length > 1) {
+                        const month = selectedMonths[i];
+                        return cachedTasks.filter(t => {
+                            const taskDate = new Date(t.created_at);
+                            return taskDate.getFullYear() === year && 
+                                   taskDate.getMonth() === month &&
+                                   t.status === 'completada';
+                        }).length;
+                    } else {
+                        // Todo el año
+                        return cachedTasks.filter(t => {
+                            const taskDate = new Date(t.created_at);
+                            return taskDate.getFullYear() === year && 
+                                   taskDate.getMonth() === i &&
+                                   t.status === 'completada';
+                        }).length;
+                    }
                 }
             });
-            const productivityTitle = day ? `Productividad - Día ${day}` : 'Productividad por Día';
+            const productivityTitle = isSingleDay ? `Productividad - Día ${selectedDays[0]}` : isSingleMonth ? `Productividad - ${monthNames[selectedMonths[0]]}` : 'Productividad por Período';
             document.getElementById('productivityChartCard').querySelector('.chart-title').textContent = productivityTitle;
             charts.productivity = new Chart(document.getElementById('productivityChart'), { type: 'line', data: { labels: trendLabels, datasets: [{ label: 'Completadas', data: productivityData, borderColor: chartColors.success, backgroundColor: 'rgba(16,185,129,0.15)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
 
@@ -3505,7 +3572,7 @@
 
         loadTheme();
         initApp();
-        console.log('✅ TaskFlow Pro Ultra v4.5 - Hora AM/PM + Feriados Perú + Filtros de Fecha en Tareas');
+        console.log('✅ TaskFlow Pro Ultra v4.6.1 - Fix: Error de Variable Duplicada');
     </script>
 </body>
 </html>
