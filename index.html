@@ -186,6 +186,62 @@
         .btn-icon.btn-sm { width: 36px; height: 36px; }
         .btn-block { width: 100%; }
 
+        /* Botón de sincronizar con indicador */
+        .btn-sync-alert {
+            position: relative;
+            animation: pulseButton 2s ease-in-out infinite;
+        }
+
+        .btn-sync-alert::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 10px;
+            height: 10px;
+            background: var(--danger);
+            border-radius: 50%;
+            border: 2px solid var(--bg-elevated);
+            animation: pulseDot 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        @keyframes pulseButton {
+            0%, 100% { box-shadow: var(--shadow-md); }
+            50% { box-shadow: var(--shadow-lg), 0 0 20px rgba(99,102,241,0.4); }
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        /* Tooltip para botón de sincronizar */
+        .btn-sync-alert[data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--duration-base);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+        }
+
+        .btn-sync-alert:hover::before {
+            opacity: 1;
+        }
+
         /* FORMULARIOS PREMIUM */
         .form-group { margin-bottom: var(--space-5); }
 
@@ -217,6 +273,16 @@
 
         .form-input::placeholder { color: var(--text-muted); }
         .form-textarea { min-height: 120px; resize: vertical; }
+        
+        .form-input[type="date"], .form-input[type="time"] {
+            cursor: pointer;
+            color-scheme: dark;
+        }
+        
+        [data-theme="light"] .form-input[type="date"],
+        [data-theme="light"] .form-input[type="time"] {
+            color-scheme: light;
+        }
 
         .form-select {
             cursor: pointer; appearance: none;
@@ -638,11 +704,13 @@
 
         .filter-group {
             display: flex; align-items: center; gap: var(--space-3);
+            flex: 0 0 auto;
         }
 
         .filter-label {
             font-size: 0.875rem; font-weight: 600;
             color: var(--text-muted);
+            white-space: nowrap;
         }
 
         .filter-select {
@@ -652,6 +720,7 @@
             border: 1.5px solid var(--border-default);
             border-radius: var(--radius-md);
             color: var(--text-primary);
+            min-width: 120px;
         }
 
         /* STATS GRID ULTRA */
@@ -978,9 +1047,16 @@
             letter-spacing: -0.02em;
         }
 
-        .table-container { overflow-x: auto; }
+        .table-container { 
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
-        table { width: 100%; border-collapse: collapse; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 600px;
+        }
 
         th, td {
             padding: var(--space-4) var(--space-5);
@@ -1180,7 +1256,7 @@
 
         /* DETAIL GRID */
         .detail-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: var(--space-4); margin-bottom: var(--space-6);
         }
 
@@ -1226,7 +1302,7 @@
         /* WORKERS ULTRA */
         .workers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: var(--space-6);
         }
 
@@ -1234,7 +1310,7 @@
             background: var(--bg-elevated);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-2xl);
-            padding: var(--space-6); cursor: pointer;
+            padding: var(--space-6) var(--space-5); cursor: pointer;
             transition: all var(--duration-base) var(--ease-out);
             box-shadow: var(--shadow-sm);
         }
@@ -1267,25 +1343,38 @@
 
         .worker-stats {
             display: grid; grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-4);
+            gap: var(--space-3);
         }
 
         .worker-stat {
-            text-align: center; padding: var(--space-4);
+            text-align: center; padding: var(--space-4) var(--space-2);
             background: var(--bg-muted);
             border-radius: var(--radius-lg);
             border: 1px solid var(--border-subtle);
+            min-width: 0;
+            min-height: 72px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .worker-stat-value {
-            font-size: 1.5rem; font-weight: 800;
+            font-size: 1.375rem; font-weight: 800;
             margin-bottom: var(--space-1);
+            white-space: nowrap;
+            line-height: 1.2;
         }
 
         .worker-stat-label {
-            font-size: 0.6875rem; color: var(--text-muted);
-            text-transform: uppercase; letter-spacing: 0.03em;
+            font-size: 0.625rem; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.02em;
             font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
         }
 
         /* TOAST ULTRA */
@@ -1387,24 +1476,33 @@
             backdrop-filter: blur(30px);
             -webkit-backdrop-filter: blur(30px);
             border-top: 1px solid var(--border-subtle);
-            z-index: 100; padding: var(--space-2) var(--space-4);
+            z-index: 100; 
+            padding: var(--space-2) 0;
             padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
             box-shadow: var(--shadow-lg);
         }
 
         .mobile-nav-items {
-            display: flex; justify-content: space-around;
+            display: flex; 
+            justify-content: space-evenly;
+            align-items: center;
             height: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 var(--space-2);
         }
 
         .mobile-nav-item {
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            gap: 5px; padding: var(--space-2) var(--space-4);
+            gap: 5px; 
+            padding: var(--space-2) var(--space-1);
             border-radius: var(--radius-lg);
             color: var(--text-muted); cursor: pointer;
             transition: all var(--duration-base);
-            flex: 1; max-width: 90px;
+            flex: 1; 
+            max-width: 85px;
+            min-width: 60px;
         }
 
         .mobile-nav-item.active { color: var(--accent-primary); }
@@ -1466,6 +1564,10 @@
             .charts-grid { grid-template-columns: 1fr; }
             .progress-rings { grid-template-columns: repeat(2, 1fr); }
             .update-banner { left: var(--sidebar-collapsed); }
+            
+            #productivityUserChart { 
+                max-height: 350px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -1483,9 +1585,10 @@
             .stat-card { padding: var(--space-5); }
             .stat-value { font-size: 2rem; }
 
-            .filters-bar { flex-direction: column; align-items: stretch; }
-            .filter-group { width: 100%; }
-            .filter-select { flex: 1; }
+            .filters-bar { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+            .filter-group { width: 100%; justify-content: space-between; }
+            .filter-label { flex-shrink: 0; }
+            .filter-select { flex: 1; min-width: 0; }
 
             .modal {
                 border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
@@ -1493,7 +1596,12 @@
             }
             .type-selector { grid-template-columns: 1fr; }
             .detail-grid { grid-template-columns: 1fr; }
-            .workers-grid { grid-template-columns: 1fr; }
+            .workers-grid { grid-template-columns: 1fr; gap: var(--space-4); }
+            .worker-card { padding: var(--space-5); }
+            .worker-stats { gap: var(--space-2); }
+            .worker-stat { padding: var(--space-3) var(--space-1); }
+            .worker-stat-value { font-size: 1.25rem; }
+            .worker-stat-label { font-size: 0.5625rem; }
             .progress-rings { grid-template-columns: 1fr; }
 
             .toast-container {
@@ -1501,6 +1609,14 @@
                 right: var(--space-5); left: var(--space-5);
             }
             .toast { width: 100%; max-width: none; }
+            
+            #productivityUserChart { 
+                max-height: 300px;
+            }
+            
+            .chart-container {
+                height: 250px !important;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1603,7 +1719,7 @@
                 <div class="mobile-logo"><i class="fas fa-bolt"></i></div>
                 <span class="mobile-title">TaskFlow</span>
             </div>
-            <button class="btn btn-ghost btn-icon" onclick="recargarDatos()"><i class="fas fa-sync-alt"></i></button>
+            <button class="btn btn-ghost btn-icon" id="syncButtonMobile" onclick="recargarDatos()"><i class="fas fa-sync-alt"></i></button>
         </header>
 
         <!-- Sidebar -->
@@ -1632,6 +1748,10 @@
                 </div>
                 <div class="nav-section" id="adminNav" style="display:none">
                     <div class="nav-section-title">Gestión</div>
+                    <div class="nav-item" onclick="showView('productivity')">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Productividad</span>
+                    </div>
                     <div class="nav-item" onclick="showView('workers')">
                         <i class="fas fa-users"></i>
                         <span>Equipo</span>
@@ -1672,7 +1792,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-secondary" onclick="recargarDatos()">
+                    <button class="btn btn-secondary" id="syncButtonDesktop" onclick="recargarDatos()">
                         <i class="fas fa-sync-alt"></i> Sincronizar
                     </button>
                     <button class="btn btn-primary" onclick="openNewTaskModal()">
@@ -1750,12 +1870,33 @@
                 <div class="view" id="dashboardView">
                     <div class="filters-bar">
                         <div class="filter-group">
-                            <span class="filter-label">Período:</span>
-                            <select class="filter-select" id="dashboardPeriod" onchange="renderDashboard()">
-                                <option value="today">Hoy</option>
-                                <option value="week" selected>Esta Semana</option>
-                                <option value="month">Este Mes</option>
-                                <option value="all">Todo</option>
+                            <span class="filter-label">Año:</span>
+                            <select class="filter-select" id="dashboardYear" onchange="renderDashboard()">
+                                <!-- Se llena dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Mes:</span>
+                            <select class="filter-select" id="dashboardMonth" onchange="updateDaysInMonth(); renderDashboard()">
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Día:</span>
+                            <select class="filter-select" id="dashboardDay" onchange="renderDashboard()">
+                                <option value="">Todo el mes</option>
+                                <!-- Se llena dinámicamente -->
                             </select>
                         </div>
                     </div>
@@ -1837,14 +1978,14 @@
                     </div>
 
                     <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
-                        <div class="chart-card">
+                        <div class="chart-card" id="trendChartCard">
                             <div class="chart-header">
                                 <div class="chart-icon"><i class="fas fa-chart-line"></i></div>
                                 <span class="chart-title">Tendencia Semanal</span>
                             </div>
                             <div class="chart-container"><canvas id="trendChart"></canvas></div>
                         </div>
-                        <div class="chart-card">
+                        <div class="chart-card" id="productivityChartCard">
                             <div class="chart-header">
                                 <div class="chart-icon"><i class="fas fa-chart-area"></i></div>
                                 <span class="chart-title">Productividad por Día</span>
@@ -1861,7 +2002,7 @@
                         <div class="table-container">
                             <table>
                                 <thead>
-                                    <tr><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Prioridad</th><th>Tiempo</th></tr>
+                                    <tr><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Prioridad</th><th>Tiempo</th><th>% Jornada</th></tr>
                                 </thead>
                                 <tbody id="dashboardTable"></tbody>
                             </table>
@@ -1873,6 +2014,86 @@
                 <div class="view" id="workersView">
                     <div class="stats-grid" id="workersStats"></div>
                     <div class="workers-grid" id="workersGrid"></div>
+                </div>
+
+                <!-- Productivity View -->
+                <div class="view" id="productivityView">
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Año:</span>
+                            <select class="filter-select" id="productivityYear" onchange="renderProductivity()">
+                                <!-- Se llena dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Mes:</span>
+                            <select class="filter-select" id="productivityMonth" onchange="renderProductivity()">
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="info-box" style="margin-bottom: var(--space-6);">
+                        <i class="fas fa-info-circle"></i>
+                        <p><strong>Nota:</strong> La productividad se calcula basándose en días laborables (Lunes a Viernes) con jornada de 9.5 horas diarias (8:30 AM - 7:00 PM, con 1 hora de almuerzo).</p>
+                    </div>
+
+                    <div class="chart-card" style="margin-bottom: var(--space-6);">
+                        <div class="chart-header">
+                            <div class="chart-icon"><i class="fas fa-chart-bar"></i></div>
+                            <span class="chart-title">Productividad por Trabajador</span>
+                        </div>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="productivityUserChart"></canvas>
+                        </div>
+                        <div style="display:flex;justify-content:center;gap:var(--space-6);margin-top:var(--space-4);flex-wrap:wrap">
+                            <div style="display:flex;align-items:center;gap:var(--space-2)">
+                                <div style="width:16px;height:16px;background:var(--success);border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">≥80% Excelente</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:var(--space-2)">
+                                <div style="width:16px;height:16px;background:var(--warning);border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">50-79% Bueno</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:var(--space-2)">
+                                <div style="width:16px;height:16px;background:var(--danger);border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">&lt;50% Bajo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card">
+                        <div class="table-header">
+                            <i class="fas fa-table" style="color: var(--success); font-size: 1.25rem;"></i>
+                            <span class="table-title">Detalle de Productividad por Trabajador</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Trabajador</th>
+                                        <th>Días Laborales</th>
+                                        <th>Horas Disponibles</th>
+                                        <th>Horas Trabajadas</th>
+                                        <th>Productividad</th>
+                                        <th>Tareas Completadas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productivityTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1936,6 +2157,14 @@
                 <div class="form-group">
                     <label class="form-label">Descripción (opcional)</label>
                     <textarea id="taskDescription" class="form-textarea" placeholder="Agrega más detalles sobre la tarea..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fecha de Término *</label>
+                    <input type="date" id="taskEndDate" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora de Término (opcional)</label>
+                    <input type="time" id="taskEndTime" class="form-input">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Asignar a</label>
@@ -2013,11 +2242,40 @@
         }
 
         function showUpdateBanner() {
-            if (!hasUpdates) { hasUpdates = true; document.getElementById('updateBanner').classList.add('show'); updateSyncStatus('warning', 'Hay actualizaciones'); }
+            if (!hasUpdates) { 
+                hasUpdates = true; 
+                document.getElementById('updateBanner').classList.add('show'); 
+                updateSyncStatus('warning', 'Hay actualizaciones');
+                
+                // Agregar animación y tooltip a los botones de sincronizar
+                const syncBtnDesktop = document.getElementById('syncButtonDesktop');
+                const syncBtnMobile = document.getElementById('syncButtonMobile');
+                if (syncBtnDesktop) {
+                    syncBtnDesktop.classList.add('btn-sync-alert');
+                    syncBtnDesktop.setAttribute('data-tooltip', '¡Hay nuevas actualizaciones!');
+                }
+                if (syncBtnMobile) {
+                    syncBtnMobile.classList.add('btn-sync-alert');
+                    syncBtnMobile.setAttribute('data-tooltip', '¡Actualizar!');
+                }
+            }
         }
 
         function hideUpdateBanner() {
-            hasUpdates = false; document.getElementById('updateBanner').classList.remove('show');
+            hasUpdates = false; 
+            document.getElementById('updateBanner').classList.remove('show');
+            
+            // Quitar animación y tooltip de los botones de sincronizar
+            const syncBtnDesktop = document.getElementById('syncButtonDesktop');
+            const syncBtnMobile = document.getElementById('syncButtonMobile');
+            if (syncBtnDesktop) {
+                syncBtnDesktop.classList.remove('btn-sync-alert');
+                syncBtnDesktop.removeAttribute('data-tooltip');
+            }
+            if (syncBtnMobile) {
+                syncBtnMobile.classList.remove('btn-sync-alert');
+                syncBtnMobile.removeAttribute('data-tooltip');
+            }
         }
 
         function updateSyncStatus(status, text) {
@@ -2029,6 +2287,113 @@
             if (!mins) return '0m';
             const h = Math.floor(mins / 60), m = mins % 60;
             return h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+        
+        function calculateWorkdayPercentage(minutes) {
+            // Jornada laboral: 9.5 horas = 570 minutos (8:30 AM - 7:00 PM con 1 hora de almuerzo de 1:00 PM - 2:00 PM)
+            const workdayMinutes = 570;
+            if (!minutes || minutes === 0) return { percentage: 0, color: 'var(--success)', badgeClass: 'success' };
+            const percentage = ((minutes / workdayMinutes) * 100).toFixed(1);
+            
+            let color, badgeClass;
+            if (percentage >= 80) {
+                color = 'var(--danger)';
+                badgeClass = 'danger';
+            } else if (percentage >= 50) {
+                color = 'var(--warning)';
+                badgeClass = 'warning';
+            } else {
+                color = 'var(--success)';
+                badgeClass = 'success';
+            }
+            
+            return { percentage: parseFloat(percentage), color, badgeClass };
+        }
+
+        function getWorkingDaysInMonth(year, month) {
+            // Calcular días laborables (lunes a viernes) en un mes
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let workingDays = 0;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayOfWeek = date.getDay();
+                // 0 = Domingo, 6 = Sábado
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    workingDays++;
+                }
+            }
+            
+            return workingDays;
+        }
+
+        function getWorkedMinutesForUser(userId, year, month) {
+            // Filtrar tareas del usuario en el mes/año especificado
+            const userTasks = cachedTasks.filter(t => {
+                const taskDate = new Date(t.created_at);
+                return t.assigned_to === userId &&
+                       taskDate.getFullYear() === year &&
+                       taskDate.getMonth() === month;
+            });
+            
+            // Sumar minutos trabajados de todas las sesiones
+            let totalMinutes = 0;
+            userTasks.forEach(task => {
+                const sessions = task.task_sessions || [];
+                sessions.forEach(session => {
+                    if (!session.is_active && session.duration_minutes) {
+                        totalMinutes += session.duration_minutes;
+                    }
+                });
+            });
+            
+            return totalMinutes;
+        }
+
+        function initializeDateFilters() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+            
+            // Llenar selector de años (últimos 5 años y próximos 2)
+            const yearSelect = document.getElementById('dashboardYear');
+            yearSelect.innerHTML = '';
+            for (let year = currentYear - 5; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+            
+            // Seleccionar mes actual
+            document.getElementById('dashboardMonth').value = currentMonth;
+            
+            // Llenar días del mes actual
+            updateDaysInMonth();
+            
+            // Seleccionar día actual
+            document.getElementById('dashboardDay').value = currentDay;
+        }
+
+        function updateDaysInMonth() {
+            const year = parseInt(document.getElementById('dashboardYear').value);
+            const month = parseInt(document.getElementById('dashboardMonth').value);
+            const daySelect = document.getElementById('dashboardDay');
+            const currentDay = daySelect.value;
+            
+            // Calcular días en el mes
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            daySelect.innerHTML = '<option value="">Todo el mes</option>';
+            for (let day = 1; day <= daysInMonth; day++) {
+                const option = document.createElement('option');
+                option.value = day;
+                option.textContent = day;
+                if (day == currentDay) option.selected = true;
+                daySelect.appendChild(option);
+            }
         }
 
         function formatStatus(s) { return { pendiente: 'Pendiente', en_progreso: 'En Progreso', pausada: 'Pausada', completada: 'Completada' }[s] || s; }
@@ -2213,18 +2578,41 @@
             populateAssignees();
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDescription').value = '';
+            document.getElementById('taskEndDate').value = '';
+            document.getElementById('taskEndTime').value = '';
             document.getElementById('newTaskModal').classList.add('active');
         }
 
         async function createTask() {
             const title = document.getElementById('taskTitle').value.trim();
             if (!title) { showToast('El título es obligatorio', 'error'); return; }
+            
+            const endDate = document.getElementById('taskEndDate').value;
+            if (!endDate) { showToast('La fecha de término es obligatoria', 'error'); return; }
+            
             if (selectedTaskType === 'principal' && currentProfile?.role !== 'jefe') { showToast('Solo el jefe puede crear tareas principales', 'error'); return; }
             const assignee = document.getElementById('taskAssignee').value;
             if (!assignee) { showToast('Selecciona un asignado', 'error'); return; }
+            
             mostrarLoading('Creando', 'Guardando tarea...');
             try {
-                const { data, error } = await supabase.from('tasks').insert([{ title, description: document.getElementById('taskDescription').value.trim(), task_type: selectedTaskType, priority: selectedPriority, assigned_to: assignee, created_by: currentUser.id, status: 'pendiente' }]).select(`*, assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name), created_profile:profiles!tasks_created_by_fkey(id, full_name), task_sessions(id, duration_minutes, is_active, start_time)`).single();
+                const endTime = document.getElementById('taskEndTime').value;
+                const taskData = { 
+                    title, 
+                    description: document.getElementById('taskDescription').value.trim(), 
+                    task_type: selectedTaskType, 
+                    priority: selectedPriority, 
+                    assigned_to: assignee, 
+                    created_by: currentUser.id, 
+                    status: 'pendiente',
+                    end_date: endDate
+                };
+                
+                if (endTime) {
+                    taskData.end_time = endTime;
+                }
+                
+                const { data, error } = await supabase.from('tasks').insert([taskData]).select(`*, assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name), created_profile:profiles!tasks_created_by_fkey(id, full_name), task_sessions(id, duration_minutes, is_active, start_time)`).single();
                 if (error) throw error;
                 cachedTasks.unshift(data); renderTasks();
                 ocultarLoading(); closeModal('newTaskModal'); showToast('Tarea creada correctamente', 'success');
@@ -2238,6 +2626,7 @@
             const sessions = task.task_sessions || [];
             const activeSession = sessions.find(s => s.is_active);
             const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+            const workdayCalc = calculateWorkdayPercentage(totalMins);
             const isOwner = task.assigned_to === currentUser?.id;
             const isJefe = currentProfile?.role === 'jefe';
             const canControl = isOwner || isJefe;
@@ -2264,12 +2653,15 @@
                 <div class="time-tracker">
                     <div class="time-display" id="timerDisplay">${formatDuration(totalMins)}</div>
                     <div class="time-label ${activeSession ? 'active' : ''}">${activeSession ? '<span class="status-dot"></span> En progreso' : 'Tiempo acumulado'}</div>
+                    ${totalMins > 0 ? `<div style="margin-top:var(--space-3)"><span class="badge badge-${workdayCalc.badgeClass}" style="font-size:0.875rem;padding:6px 14px">${workdayCalc.percentage}% de la jornada laboral (9.5h)</span></div>` : ''}
                 </div>
                 <div class="detail-grid">
                     <div class="detail-item"><div class="detail-label">Tipo</div><div class="detail-value">${formatTaskType(task.task_type)}</div></div>
                     <div class="detail-item"><div class="detail-label">Asignado</div><div class="detail-value">${task.assigned_profile?.full_name || 'N/A'}</div></div>
                     <div class="detail-item"><div class="detail-label">Creado por</div><div class="detail-value">${task.created_profile?.full_name || 'N/A'}</div></div>
-                    <div class="detail-item"><div class="detail-label">Fecha</div><div class="detail-value">${new Date(task.created_at).toLocaleDateString('es-ES')}</div></div>
+                    <div class="detail-item"><div class="detail-label">Fecha Creación</div><div class="detail-value">${new Date(task.created_at).toLocaleDateString('es-ES')}</div></div>
+                    ${task.end_date ? `<div class="detail-item"><div class="detail-label">Fecha Término</div><div class="detail-value">${new Date(task.end_date).toLocaleDateString('es-ES')}</div></div>` : ''}
+                    ${task.end_time ? `<div class="detail-item"><div class="detail-label">Hora Término</div><div class="detail-value">${task.end_time}</div></div>` : ''}
                 </div>
                 <div class="task-actions">${actions}</div>
                 ${!isJefe && activeSession ? '<div class="info-box"><i class="fas fa-info-circle"></i><p>Solo el jefe puede pausar o completar tareas en progreso</p></div>' : ''}`;
@@ -2328,12 +2720,39 @@
         // DASHBOARD CON MÁS GRÁFICAS
         // ============================================
         function renderDashboard() {
-            const period = document.getElementById('dashboardPeriod').value;
-            const now = new Date();
+            const year = parseInt(document.getElementById('dashboardYear').value);
+            const month = parseInt(document.getElementById('dashboardMonth').value);
+            const day = document.getElementById('dashboardDay').value;
+            
+            // Actualizar subtítulo del header
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            let subtitle = 'Métricas y estadísticas avanzadas';
+            if (day) {
+                subtitle = `Análisis del ${day} de ${monthNames[month]} ${year}`;
+            } else {
+                subtitle = `Análisis de ${monthNames[month]} ${year}`;
+            }
+            document.getElementById('headerSubtitle').textContent = subtitle;
+            
             let filtered = [...cachedTasks];
-            if (period === 'today') filtered = filtered.filter(t => new Date(t.created_at).toDateString() === now.toDateString());
-            else if (period === 'week') { const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000); filtered = filtered.filter(t => new Date(t.created_at) >= weekAgo); }
-            else if (period === 'month') { const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000); filtered = filtered.filter(t => new Date(t.created_at) >= monthAgo); }
+            
+            // Filtrar por fecha seleccionada
+            if (day) {
+                // Filtrar por día específico
+                filtered = filtered.filter(t => {
+                    const taskDate = new Date(t.created_at);
+                    return taskDate.getFullYear() === year && 
+                           taskDate.getMonth() === month && 
+                           taskDate.getDate() === parseInt(day);
+                });
+            } else {
+                // Filtrar por mes completo
+                filtered = filtered.filter(t => {
+                    const taskDate = new Date(t.created_at);
+                    return taskDate.getFullYear() === year && 
+                           taskDate.getMonth() === month;
+                });
+            }
 
             const total = filtered.length;
             const completed = filtered.filter(t => t.status === 'completada').length;
@@ -2379,31 +2798,79 @@
 
             // GRÁFICA DE LÍNEA - Tendencia
             if (charts.trend) charts.trend.destroy();
-            const last7Days = [...Array(7)].map((_, i) => {
-                const d = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
-                return d.toLocaleDateString('es-ES', { weekday: 'short' });
-            });
-            const trendData = last7Days.map((_, i) => {
-                const d = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
-                return cachedTasks.filter(t => new Date(t.created_at).toDateString() === d.toDateString()).length;
-            });
-            charts.trend = new Chart(document.getElementById('trendChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Tareas creadas', data: trendData, borderColor: chartColors.accent, backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
+            
+            let trendLabels, trendData, trendTitle = 'Tendencia Semanal';
+            if (day) {
+                // Mostrar por horas del día seleccionado
+                trendTitle = `Tendencia - Día ${day}`;
+                trendLabels = ['8h', '10h', '12h', '14h', '16h', '18h'];
+                trendData = trendLabels.map((_, i) => {
+                    const hour = 8 + (i * 2);
+                    return filtered.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getHours() <= hour;
+                    }).length;
+                });
+            } else {
+                // Mostrar últimos 7 días del mes
+                const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                trendTitle = `Tendencia - ${monthNames[month]} ${year}`;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const startDay = Math.max(1, daysInMonth - 6);
+                trendLabels = [...Array(7)].map((_, i) => `${startDay + i}`);
+                trendData = trendLabels.map(dayNum => {
+                    return cachedTasks.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getFullYear() === year && 
+                               taskDate.getMonth() === month && 
+                               taskDate.getDate() === parseInt(dayNum);
+                    }).length;
+                });
+            }
+            
+            document.getElementById('trendChartCard').querySelector('.chart-title').textContent = trendTitle;
+            charts.trend = new Chart(document.getElementById('trendChart'), { type: 'line', data: { labels: trendLabels, datasets: [{ label: 'Tareas creadas', data: trendData, borderColor: chartColors.accent, backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
 
             // GRÁFICA DE ÁREA - Productividad
             if (charts.productivity) charts.productivity.destroy();
-            const productivityData = last7Days.map((_, i) => {
-                const d = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
-                const dayTasks = cachedTasks.filter(t => new Date(t.created_at).toDateString() === d.toDateString());
-                return dayTasks.filter(t => t.status === 'completada').length;
+            const productivityData = trendLabels.map((label, i) => {
+                if (day) {
+                    const hour = 8 + (i * 2);
+                    return filtered.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getHours() <= hour && t.status === 'completada';
+                    }).length;
+                } else {
+                    const dayNum = parseInt(label);
+                    return cachedTasks.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getFullYear() === year && 
+                               taskDate.getMonth() === month && 
+                               taskDate.getDate() === dayNum &&
+                               t.status === 'completada';
+                    }).length;
+                }
             });
-            charts.productivity = new Chart(document.getElementById('productivityChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Completadas', data: productivityData, borderColor: chartColors.success, backgroundColor: 'rgba(16,185,129,0.15)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
+            const productivityTitle = day ? `Productividad - Día ${day}` : 'Productividad por Día';
+            document.getElementById('productivityChartCard').querySelector('.chart-title').textContent = productivityTitle;
+            charts.productivity = new Chart(document.getElementById('productivityChart'), { type: 'line', data: { labels: trendLabels, datasets: [{ label: 'Completadas', data: productivityData, borderColor: chartColors.success, backgroundColor: 'rgba(16,185,129,0.15)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
 
             // TABLA
             document.getElementById('dashboardTable').innerHTML = filtered.slice(0, 10).map(t => {
                 const sessions = t.task_sessions || [];
                 const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-                return `<tr><td style="font-weight:600">${t.title}</td><td>${formatTaskType(t.task_type)}</td><td><span class="badge badge-${t.status === 'completada' ? 'success' : t.status === 'en_progreso' ? 'info' : 'muted'}">${formatStatus(t.status)}</span></td><td>${t.assigned_profile?.full_name || 'N/A'}</td><td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td><td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td></tr>`;
-            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+                const workdayCalc = calculateWorkdayPercentage(totalMins);
+                
+                return `<tr>
+                    <td style="font-weight:600">${t.title}</td>
+                    <td>${formatTaskType(t.task_type)}</td>
+                    <td><span class="badge badge-${t.status === 'completada' ? 'success' : t.status === 'en_progreso' ? 'info' : 'muted'}">${formatStatus(t.status)}</span></td>
+                    <td>${t.assigned_profile?.full_name || 'N/A'}</td>
+                    <td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td>
+                    <td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td>
+                    <td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
         }
 
         function renderProgressRing(canvasId, value, total, color) {
@@ -2438,6 +2905,147 @@
         }
 
         // ============================================
+        // PRODUCTIVITY VIEW
+        // ============================================
+        function initializeProductivityFilters() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            
+            // Llenar selector de años
+            const yearSelect = document.getElementById('productivityYear');
+            yearSelect.innerHTML = '';
+            for (let year = currentYear - 5; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+            
+            // Seleccionar mes actual
+            document.getElementById('productivityMonth').value = currentMonth;
+        }
+
+        function renderProductivity() {
+            const year = parseInt(document.getElementById('productivityYear').value);
+            const month = parseInt(document.getElementById('productivityMonth').value);
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            
+            // Actualizar subtítulo del header
+            document.getElementById('headerSubtitle').textContent = `Productividad de ${monthNames[month]} ${year}`;
+            
+            // Calcular días laborables del mes
+            const workingDays = getWorkingDaysInMonth(year, month);
+            const workdayMinutes = 570; // 9.5 horas
+            const availableHoursPerDay = 9.5;
+            const totalAvailableMinutes = workingDays * workdayMinutes;
+            const totalAvailableHours = workingDays * availableHoursPerDay;
+            
+            // Calcular datos para cada trabajador
+            const productivityData = cachedProfiles.map(worker => {
+                const workedMinutes = getWorkedMinutesForUser(worker.id, year, month);
+                const workedHours = (workedMinutes / 60).toFixed(1);
+                const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100).toFixed(1) : 0;
+                
+                // Contar tareas completadas
+                const completedTasks = cachedTasks.filter(t => {
+                    const taskDate = new Date(t.created_at);
+                    return t.assigned_to === worker.id &&
+                           t.status === 'completada' &&
+                           taskDate.getFullYear() === year &&
+                           taskDate.getMonth() === month;
+                }).length;
+                
+                return {
+                    name: worker.full_name || 'Usuario',
+                    workedMinutes,
+                    workedHours: parseFloat(workedHours),
+                    productivity: parseFloat(productivity),
+                    completedTasks
+                };
+            });
+            
+            // Ordenar por productividad descendente
+            productivityData.sort((a, b) => b.productivity - a.productivity);
+            
+            // Renderizar gráfica
+            const chartColors = {
+                accent: '#6366f1',
+                success: '#10b981',
+                warning: '#f59e0b',
+                danger: '#ef4444',
+                info: '#3b82f6',
+                text: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim(),
+                border: getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim()
+            };
+            
+            if (charts.productivityUsers) charts.productivityUsers.destroy();
+            
+            const barColors = productivityData.map(d => {
+                if (d.productivity >= 80) return chartColors.success;
+                if (d.productivity >= 50) return chartColors.warning;
+                return chartColors.danger;
+            });
+            
+            charts.productivityUsers = new Chart(document.getElementById('productivityUserChart'), {
+                type: 'bar',
+                data: {
+                    labels: productivityData.map(d => d.name),
+                    datasets: [{
+                        label: 'Productividad (%)',
+                        data: productivityData.map(d => d.productivity),
+                        backgroundColor: barColors,
+                        borderRadius: 12,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Productividad: ${context.parsed.y.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            grid: { color: chartColors.border },
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Renderizar tabla
+            document.getElementById('productivityTable').innerHTML = productivityData.map(d => {
+                const productivityBadge = d.productivity >= 80 ? 'success' : d.productivity >= 50 ? 'warning' : 'danger';
+                return `<tr>
+                    <td style="font-weight:600">${d.name}</td>
+                    <td>${workingDays} días</td>
+                    <td style="font-family:var(--font-mono)">${totalAvailableHours.toFixed(1)}h</td>
+                    <td style="font-family:var(--font-mono);font-weight:600;color:var(--accent-primary)">${d.workedHours}h</td>
+                    <td><span class="badge badge-${productivityBadge}" style="font-size:0.8125rem">${d.productivity}%</span></td>
+                    <td><span class="badge badge-info">${d.completedTasks} tareas</span></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+        }
+
+        // ============================================
         // WORKERS
         // ============================================
         function renderWorkers() {
@@ -2459,8 +3067,8 @@
                     <div class="worker-header"><div class="worker-avatar">${(w.full_name || 'U').charAt(0).toUpperCase()}</div><div><div class="worker-name">${w.full_name || 'Usuario'}</div><span class="user-role ${w.role}">${w.role}</span></div></div>
                     <div class="worker-stats">
                         <div class="worker-stat"><div class="worker-stat-value">${w.tasks}</div><div class="worker-stat-label">Tareas</div></div>
-                        <div class="worker-stat"><div class="worker-stat-value">${w.completed}</div><div class="worker-stat-label">Completadas</div></div>
-                        <div class="worker-stat"><div class="worker-stat-value" style="color:${w.efficiency >= 70 ? 'var(--success)' : w.efficiency >= 40 ? 'var(--warning)' : 'var(--danger)'}">${w.efficiency}%</div><div class="worker-stat-label">Efectividad</div></div>
+                        <div class="worker-stat"><div class="worker-stat-value">${w.completed}</div><div class="worker-stat-label">Hechas</div></div>
+                        <div class="worker-stat"><div class="worker-stat-value" style="color:${w.efficiency >= 70 ? 'var(--success)' : w.efficiency >= 40 ? 'var(--warning)' : 'var(--danger)'}">${w.efficiency}%</div><div class="worker-stat-label">Efect.</div></div>
                     </div>
                 </div>`).join('') || '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-users"></i><p>No hay trabajadores registrados</p></div>';
         }
@@ -2477,15 +3085,60 @@
             document.getElementById(view + 'View').classList.add('active');
 
             const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
-            navItems.forEach(item => { if ((view === 'tasks' && item.textContent.includes('Tareas')) || (view === 'dashboard' && item.textContent.includes('Analytics')) || (view === 'workers' && item.textContent.includes('Equipo'))) item.classList.add('active'); });
+            navItems.forEach(item => { 
+                if ((view === 'tasks' && item.textContent.includes('Tareas')) || 
+                    (view === 'dashboard' && item.textContent.includes('Analytics')) || 
+                    (view === 'productivity' && item.textContent.includes('Productividad')) ||
+                    (view === 'workers' && item.textContent.includes('Equipo'))) 
+                    item.classList.add('active'); 
+            });
             const mobileItems = document.querySelectorAll('.mobile-nav-item');
-            mobileItems.forEach(item => { if ((view === 'tasks' && item.textContent.includes('Tareas')) || (view === 'dashboard' && item.textContent.includes('Analytics')) || (view === 'workers' && item.textContent.includes('Equipo'))) item.classList.add('active'); });
+            mobileItems.forEach(item => { 
+                if ((view === 'tasks' && item.textContent.includes('Tareas')) || 
+                    (view === 'dashboard' && item.textContent.includes('Analytics')) || 
+                    (view === 'workers' && item.textContent.includes('Equipo'))) 
+                    item.classList.add('active'); 
+            });
 
-            const titles = { tasks: ['Tareas', 'Gestiona y organiza tu trabajo'], dashboard: ['Analytics', 'Métricas y estadísticas avanzadas'], workers: ['Equipo', 'Rendimiento y productividad del equipo'] };
+            const titles = { 
+                tasks: ['Tareas', 'Gestiona y organiza tu trabajo'], 
+                dashboard: ['Analytics', 'Métricas y estadísticas avanzadas'], 
+                productivity: ['Productividad', 'Análisis de rendimiento por trabajador'],
+                workers: ['Equipo', 'Rendimiento y productividad del equipo'] 
+            };
             document.getElementById('headerTitle').textContent = titles[view]?.[0] || 'TaskFlow';
-            document.getElementById('headerSubtitle').textContent = titles[view]?.[1] || '';
+            
+            // Actualizar subtítulo del dashboard según los filtros
+            if (view === 'dashboard') {
+                const year = document.getElementById('dashboardYear')?.value;
+                const month = parseInt(document.getElementById('dashboardMonth')?.value);
+                const day = document.getElementById('dashboardDay')?.value;
+                const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                
+                let subtitle = 'Métricas y estadísticas avanzadas';
+                if (year && month !== undefined) {
+                    if (day) {
+                        subtitle = `Análisis del ${day} de ${monthNames[month]} ${year}`;
+                    } else {
+                        subtitle = `Análisis de ${monthNames[month]} ${year}`;
+                    }
+                }
+                document.getElementById('headerSubtitle').textContent = subtitle;
+            } else if (view === 'productivity') {
+                // El subtítulo se actualiza en renderProductivity
+                document.getElementById('headerSubtitle').textContent = titles[view]?.[1] || '';
+            } else {
+                document.getElementById('headerSubtitle').textContent = titles[view]?.[1] || '';
+            }
 
-            if (view === 'dashboard') renderDashboard();
+            if (view === 'dashboard') {
+                initializeDateFilters();
+                renderDashboard();
+            }
+            if (view === 'productivity') {
+                initializeProductivityFilters();
+                renderProductivity();
+            }
             if (view === 'workers') renderWorkers();
         }
 
@@ -2535,7 +3188,7 @@
 
         loadTheme();
         initApp();
-        console.log('✅ TaskFlow Pro Ultra v4.0 - Diseño Ultra Moderno 2025');
+        console.log('✅ TaskFlow Pro Ultra v4.2 - Diseño Ultra Moderno 2025 + Productividad de Usuarios');
     </script>
 </body>
 </html>
