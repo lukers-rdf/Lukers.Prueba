@@ -723,6 +723,135 @@
             min-width: 90px;
         }
 
+        /* FILTROS ESTILO QLIKVIEW */
+        .qlik-filters-container {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-6);
+            flex-wrap: wrap;
+        }
+
+        .qlik-filter {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            min-width: 110px;
+            max-width: 160px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .qlik-filter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 8px;
+            background: var(--bg-muted);
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            user-select: none;
+            transition: background var(--duration-fast);
+        }
+
+        .qlik-filter-header:hover {
+            background: var(--bg-subtle);
+        }
+
+        .qlik-filter-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .qlik-filter-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .qlik-filter-btn {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all var(--duration-fast);
+            font-size: 0.7rem;
+            padding: 0;
+        }
+
+        .qlik-filter-btn:hover {
+            background: var(--bg-subtle);
+            color: var(--text-primary);
+        }
+
+        .qlik-filter-body {
+            max-height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .qlik-filter-body.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .qlik-filter-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .qlik-filter-body::-webkit-scrollbar-track {
+            background: var(--bg-muted);
+        }
+
+        .qlik-filter-body::-webkit-scrollbar-thumb {
+            background: var(--border-default);
+            border-radius: 3px;
+        }
+
+        .qlik-filter-option {
+            padding: 5px 8px;
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            border-left: 3px solid transparent;
+            transition: all var(--duration-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .qlik-filter-option:hover {
+            background: var(--bg-muted);
+        }
+
+        .qlik-filter-option.selected {
+            background: rgba(16, 185, 129, 0.15);
+            border-left-color: var(--success);
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .qlik-filter-option.selected::before {
+            content: '✓';
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .qlik-filter-count {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
         /* STATS GRID ULTRA */
         .stats-grid {
             display: grid; grid-template-columns: repeat(4, 1fr);
@@ -1901,36 +2030,55 @@
 
                 <!-- Dashboard View -->
                 <div class="view" id="dashboardView">
-                    <div class="filters-bar">
-                        <div class="filter-group">
-                            <span class="filter-label">Año:</span>
-                            <select class="filter-select" id="dashboardYear" onchange="renderDashboard()">
+                    <div class="qlik-filters-container" id="dashboardFilters">
+                        <!-- Filtro de Año -->
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikFilter('yearFilter')">
+                                <span class="qlik-filter-title">Año</span>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearQlikFilter('year')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-body" id="yearFilter">
                                 <!-- Se llena dinámicamente -->
-                            </select>
+                            </div>
                         </div>
-                        <div class="filter-group">
-                            <span class="filter-label">Mes:</span>
-                            <select class="filter-select" id="dashboardMonth" multiple size="3" onchange="updateDaysInMonth(); renderDashboard()" style="min-width:140px;padding:4px 8px">
-                                <option value="0">Enero</option>
-                                <option value="1">Febrero</option>
-                                <option value="2">Marzo</option>
-                                <option value="3">Abril</option>
-                                <option value="4">Mayo</option>
-                                <option value="5">Junio</option>
-                                <option value="6">Julio</option>
-                                <option value="7">Agosto</option>
-                                <option value="8">Septiembre</option>
-                                <option value="9">Octubre</option>
-                                <option value="10">Noviembre</option>
-                                <option value="11">Diciembre</option>
-                            </select>
+
+                        <!-- Filtro de Mes -->
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikFilter('monthFilter')">
+                                <span class="qlik-filter-title">Mes</span>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearQlikFilter('month')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-body" id="monthFilter">
+                                <div class="qlik-filter-option" data-value="0" onclick="toggleQlikOption(this, 'month')">Enero</div>
+                                <div class="qlik-filter-option" data-value="1" onclick="toggleQlikOption(this, 'month')">Febrero</div>
+                                <div class="qlik-filter-option" data-value="2" onclick="toggleQlikOption(this, 'month')">Marzo</div>
+                                <div class="qlik-filter-option" data-value="3" onclick="toggleQlikOption(this, 'month')">Abril</div>
+                                <div class="qlik-filter-option" data-value="4" onclick="toggleQlikOption(this, 'month')">Mayo</div>
+                                <div class="qlik-filter-option" data-value="5" onclick="toggleQlikOption(this, 'month')">Junio</div>
+                                <div class="qlik-filter-option" data-value="6" onclick="toggleQlikOption(this, 'month')">Julio</div>
+                                <div class="qlik-filter-option" data-value="7" onclick="toggleQlikOption(this, 'month')">Agosto</div>
+                                <div class="qlik-filter-option" data-value="8" onclick="toggleQlikOption(this, 'month')">Septiembre</div>
+                                <div class="qlik-filter-option" data-value="9" onclick="toggleQlikOption(this, 'month')">Octubre</div>
+                                <div class="qlik-filter-option" data-value="10" onclick="toggleQlikOption(this, 'month')">Noviembre</div>
+                                <div class="qlik-filter-option" data-value="11" onclick="toggleQlikOption(this, 'month')">Diciembre</div>
+                            </div>
                         </div>
-                        <div class="filter-group">
-                            <span class="filter-label">Día:</span>
-                            <select class="filter-select" id="dashboardDay" multiple size="3" onchange="renderDashboard()" style="min-width:100px;padding:4px 8px">
-                                <option value="" selected>Todo el mes</option>
+
+                        <!-- Filtro de Día -->
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikFilter('dayFilter')">
+                                <span class="qlik-filter-title">Día</span>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearQlikFilter('day')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-body" id="dayFilter">
                                 <!-- Se llena dinámicamente -->
-                            </select>
+                            </div>
                         </div>
                     </div>
 
@@ -2481,57 +2629,6 @@
             return totalMinutes;
         }
 
-        function initializeDateFilters() {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth();
-            
-            // Llenar selector de años (últimos 5 años y próximos 2)
-            const yearSelect = document.getElementById('dashboardYear');
-            yearSelect.innerHTML = '';
-            for (let year = currentYear - 5; year <= currentYear + 2; year++) {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year;
-                if (year === currentYear) option.selected = true;
-                yearSelect.appendChild(option);
-            }
-            
-            // Seleccionar mes actual por defecto
-            const monthSelect = document.getElementById('dashboardMonth');
-            Array.from(monthSelect.options).forEach(opt => {
-                opt.selected = parseInt(opt.value) === currentMonth;
-            });
-            
-            // Llenar días del mes actual
-            updateDaysInMonth();
-        }
-
-        function updateDaysInMonth() {
-            const year = parseInt(document.getElementById('dashboardYear').value);
-            const monthSelect = document.getElementById('dashboardMonth');
-            const selectedMonths = Array.from(monthSelect.selectedOptions).map(o => parseInt(o.value)).filter(v => !isNaN(v));
-            const daySelect = document.getElementById('dashboardDay');
-            
-            daySelect.innerHTML = '<option value="" selected>Todo el mes</option>';
-            
-            // Solo llenar días si hay exactamente un mes seleccionado
-            if (selectedMonths.length === 1) {
-                const month = selectedMonths[0];
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const option = document.createElement('option');
-                    option.value = day;
-                    option.textContent = day;
-                    daySelect.appendChild(option);
-                }
-            } else {
-                // Si hay múltiples meses o ninguno, mostrar solo "Todo el mes"
-                daySelect.innerHTML = '<option value="" selected>N/A (múltiples meses)</option>';
-            }
-        }
-
         function formatStatus(s) { return { pendiente: 'Pendiente', en_progreso: 'En Progreso', pausada: 'Pausada', completada: 'Completada' }[s] || s; }
         function formatTaskType(t) { return { principal: 'Principal', gestion: 'Gestión', complementario: 'Complementario' }[t] || t; }
 
@@ -3013,16 +3110,125 @@
         }
 
         // ============================================
+        // FILTROS TIPO QLIKVIEW
+        // ============================================
+        let qlikFilters = {
+            year: [],
+            month: [],
+            day: []
+        };
+
+        function toggleQlikFilter(filterId) {
+            const filterBody = document.getElementById(filterId);
+            filterBody.classList.toggle('collapsed');
+        }
+
+        function toggleQlikOption(element, filterType) {
+            const value = element.dataset.value;
+            element.classList.toggle('selected');
+            
+            if (element.classList.contains('selected')) {
+                if (!qlikFilters[filterType].includes(value)) {
+                    qlikFilters[filterType].push(value);
+                }
+            } else {
+                qlikFilters[filterType] = qlikFilters[filterType].filter(v => v !== value);
+            }
+            
+            if (filterType === 'month' || filterType === 'year') {
+                updateQlikDays();
+            }
+            
+            renderDashboard();
+        }
+
+        function clearQlikFilter(filterType) {
+            qlikFilters[filterType] = [];
+            
+            // Remover clases selected
+            const filterId = filterType === 'year' ? 'yearFilter' : filterType === 'month' ? 'monthFilter' : 'dayFilter';
+            document.querySelectorAll(`#${filterId} .qlik-filter-option`).forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            if (filterType === 'month' || filterType === 'year') {
+                updateQlikDays();
+            }
+            
+            renderDashboard();
+        }
+
+        function initializeQlikFilters() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            
+            // Llenar años
+            const yearFilter = document.getElementById('yearFilter');
+            yearFilter.innerHTML = '';
+            for (let year = currentYear - 5; year <= currentYear + 2; year++) {
+                const div = document.createElement('div');
+                div.className = 'qlik-filter-option';
+                if (year === currentYear) {
+                    div.classList.add('selected');
+                    qlikFilters.year.push(year.toString());
+                }
+                div.dataset.value = year;
+                div.textContent = year;
+                div.onclick = function() { toggleQlikOption(this, 'year'); };
+                yearFilter.appendChild(div);
+            }
+            
+            // Seleccionar mes actual
+            const monthOptions = document.querySelectorAll('#monthFilter .qlik-filter-option');
+            monthOptions[currentMonth].classList.add('selected');
+            qlikFilters.month.push(currentMonth.toString());
+            
+            // Llenar días
+            updateQlikDays();
+        }
+
+        function updateQlikDays() {
+            const dayFilter = document.getElementById('dayFilter');
+            dayFilter.innerHTML = '';
+            
+            // Si hay exactamente un año y un mes seleccionados, mostrar días
+            if (qlikFilters.year.length === 1 && qlikFilters.month.length === 1) {
+                const year = parseInt(qlikFilters.year[0]);
+                const month = parseInt(qlikFilters.month[0]);
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const div = document.createElement('div');
+                    div.className = 'qlik-filter-option';
+                    div.dataset.value = day;
+                    div.textContent = day;
+                    div.onclick = function() { toggleQlikOption(this, 'day'); };
+                    dayFilter.appendChild(div);
+                }
+            } else {
+                // Mensaje informativo
+                const msg = document.createElement('div');
+                msg.style.padding = '10px';
+                msg.style.fontSize = '0.75rem';
+                msg.style.color = 'var(--text-muted)';
+                msg.style.textAlign = 'center';
+                msg.textContent = 'Selecciona 1 año y 1 mes';
+                dayFilter.appendChild(msg);
+            }
+            
+            // Limpiar selección de días
+            qlikFilters.day = [];
+        }
+
+        // ============================================
         // DASHBOARD CON MÁS GRÁFICAS
         // ============================================
         function renderDashboard() {
-            const year = parseInt(document.getElementById('dashboardYear').value);
-            const monthSelect = document.getElementById('dashboardMonth');
-            const daySelect = document.getElementById('dashboardDay');
-            
-            // Obtener meses y días seleccionados (múltiple selección)
-            const selectedMonths = Array.from(monthSelect.selectedOptions).map(o => parseInt(o.value)).filter(v => !isNaN(v));
-            const selectedDays = Array.from(daySelect.selectedOptions).map(o => o.value).filter(v => v !== '');
+            // Obtener valores desde qlikFilters
+            const year = qlikFilters.year.length > 0 ? parseInt(qlikFilters.year[0]) : new Date().getFullYear();
+            const selectedMonths = qlikFilters.month.map(m => parseInt(m));
+            const selectedDays = qlikFilters.day.map(d => d.toString());
             
             // Variables auxiliares
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -3512,7 +3718,7 @@
             }
 
             if (view === 'dashboard') {
-                initializeDateFilters();
+                initializeQlikFilters();
                 renderDashboard();
             }
             if (view === 'productivity') {
@@ -3572,7 +3778,7 @@
 
         loadTheme();
         initApp();
-        console.log('✅ TaskFlow Pro Ultra v4.6.1 - Fix: Error de Variable Duplicada');
+        console.log('✅ TaskFlow Pro Ultra v4.7 - Filtros Tipo QlikView en Analytics');
     </script>
 </body>
 </html>
