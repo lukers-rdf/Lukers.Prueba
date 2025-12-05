@@ -1806,13 +1806,45 @@
                 <div class="view active" id="tasksView">
                     <div class="filters-bar">
                         <div class="filter-group">
+                            <span class="filter-label">Año:</span>
+                            <select class="filter-select" id="filterYear" onchange="updateTaskDateFilters();renderTasks()">
+                                <!-- Se llena dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Mes:</span>
+                            <select class="filter-select" id="filterMonth" onchange="updateTaskDaysFilter();renderTasks()">
+                                <option value="">Todos</option>
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Día:</span>
+                            <select class="filter-select" id="filterDay" onchange="renderTasks()">
+                                <option value="">Todos</option>
+                                <!-- Se llena dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
                             <span class="filter-label">Estado:</span>
                             <select class="filter-select" id="filterStatus" onchange="renderTasks()">
-                                <option value="">Todos</option>
+                                <option value="">Activas (Pendiente + En Progreso)</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en_progreso">En Progreso</option>
                                 <option value="pausada">Pausada</option>
                                 <option value="completada">Completada</option>
+                                <option value="all">Todas</option>
                             </select>
                         </div>
                         <div class="filter-group">
@@ -2046,7 +2078,7 @@
 
                     <div class="info-box" style="margin-bottom: var(--space-6);">
                         <i class="fas fa-info-circle"></i>
-                        <p><strong>Nota:</strong> La productividad se calcula basándose en días laborables (Lunes a Viernes) con jornada de 9.5 horas diarias (8:30 AM - 7:00 PM, con 1 hora de almuerzo).</p>
+                        <p><strong>Nota:</strong> La productividad se calcula basándose en días laborables (Lunes a Viernes, excluyendo feriados del sector privado en Perú) con jornada de 9.5 horas diarias (8:30 AM - 7:00 PM, con 1 hora de almuerzo).</p>
                     </div>
 
                     <div class="chart-card" style="margin-bottom: var(--space-6);">
@@ -2159,14 +2191,45 @@
                     <textarea id="taskDescription" class="form-textarea" placeholder="Agrega más detalles sobre la tarea..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Fecha de Término *</label>
-                    <input type="date" id="taskEndDate" class="form-input" required>
+                    <label class="form-label">Fecha de Término</label>
+                    <input type="date" id="taskEndDate" class="form-input">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Hora de Término (opcional)</label>
-                    <input type="time" id="taskEndTime" class="form-input">
+                    <div style="display:flex;gap:var(--space-2)">
+                        <select id="taskEndHour" class="form-select" style="flex:1">
+                            <option value="">Hora</option>
+                            <option value="01">01</option>
+                            <option value="02">02</option>
+                            <option value="03">03</option>
+                            <option value="04">04</option>
+                            <option value="05">05</option>
+                            <option value="06">06</option>
+                            <option value="07">07</option>
+                            <option value="08">08</option>
+                            <option value="09">09</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                        </select>
+                        <select id="taskEndMinute" class="form-select" style="flex:1">
+                            <option value="">Min</option>
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                        <select id="taskEndPeriod" class="form-select" style="flex:0.8">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
+                <div class="info-box" id="workerAutoAssignInfo" style="display:none;margin-bottom:var(--space-4)">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Esta tarea será asignada automáticamente a ti.</p>
+                </div>
+                <div class="form-group" id="assigneeGroup">
                     <label class="form-label">Asignar a</label>
                     <select id="taskAssignee" class="form-select"></select>
                 </div>
@@ -2198,6 +2261,72 @@
         const JEFE_CODE = 'admin2024';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ============================================
+        // FERIADOS SECTOR PRIVADO PERÚ
+        // ============================================
+        const FERIADOS_PERU = {
+            2024: [
+                '2024-01-01', // Año Nuevo
+                '2024-03-28', // Jueves Santo
+                '2024-03-29', // Viernes Santo
+                '2024-05-01', // Día del Trabajo
+                '2024-06-29', // San Pedro y San Pablo
+                '2024-07-28', // Fiestas Patrias
+                '2024-07-29', // Fiestas Patrias
+                '2024-08-30', // Santa Rosa de Lima
+                '2024-10-08', // Combate de Angamos
+                '2024-11-01', // Todos los Santos
+                '2024-12-08', // Inmaculada Concepción
+                '2024-12-09', // Batalla de Ayacucho
+                '2024-12-25'  // Navidad
+            ],
+            2025: [
+                '2025-01-01', // Año Nuevo
+                '2025-04-17', // Jueves Santo
+                '2025-04-18', // Viernes Santo
+                '2025-05-01', // Día del Trabajo
+                '2025-06-29', // San Pedro y San Pablo
+                '2025-07-28', // Fiestas Patrias
+                '2025-07-29', // Fiestas Patrias
+                '2025-08-30', // Santa Rosa de Lima
+                '2025-10-08', // Combate de Angamos
+                '2025-11-01', // Todos los Santos
+                '2025-12-08', // Inmaculada Concepción
+                '2025-12-09', // Batalla de Ayacucho
+                '2025-12-25'  // Navidad
+            ],
+            2026: [
+                '2026-01-01', // Año Nuevo
+                '2026-04-02', // Jueves Santo
+                '2026-04-03', // Viernes Santo
+                '2026-05-01', // Día del Trabajo
+                '2026-06-29', // San Pedro y San Pablo
+                '2026-07-28', // Fiestas Patrias
+                '2026-07-29', // Fiestas Patrias
+                '2026-08-30', // Santa Rosa de Lima
+                '2026-10-08', // Combate de Angamos
+                '2026-11-01', // Todos los Santos
+                '2026-12-08', // Inmaculada Concepción
+                '2026-12-09', // Batalla de Ayacucho
+                '2026-12-25'  // Navidad
+            ]
+        };
+
+        function isFeriado(year, month, day) {
+            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            const feriadosYear = FERIADOS_PERU[year] || [];
+            return feriadosYear.includes(dateStr);
+        }
+
+        function formatTime12Hour(time24) {
+            if (!time24) return '';
+            const [hours, minutes] = time24.split(':');
+            let hour = parseInt(hours);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12 || 12;
+            return `${hour}:${minutes} ${period}`;
+        }
 
         // ============================================
         // GLOBAL STATE
@@ -2311,7 +2440,7 @@
         }
 
         function getWorkingDaysInMonth(year, month) {
-            // Calcular días laborables (lunes a viernes) en un mes
+            // Calcular días laborables (lunes a viernes, excluyendo feriados) en un mes
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             let workingDays = 0;
             
@@ -2319,7 +2448,8 @@
                 const date = new Date(year, month, day);
                 const dayOfWeek = date.getDay();
                 // 0 = Domingo, 6 = Sábado
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                // Excluir fines de semana y feriados
+                if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isFeriado(year, month, day)) {
                     workingDays++;
                 }
             }
@@ -2516,14 +2646,131 @@
         // ============================================
         // RENDER TASKS
         // ============================================
+        function getDeadlineStatus(endDate) {
+            if (!endDate) return null;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const deadline = new Date(endDate);
+            deadline.setHours(0, 0, 0, 0);
+            
+            const diffTime = deadline - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) {
+                return { status: 'vencida', text: 'Vencida', class: 'danger' };
+            } else if (diffDays === 0) {
+                return { status: 'hoy', text: 'Vence hoy', class: 'warning' };
+            } else if (diffDays === 1) {
+                return { status: 'manana', text: 'Vence mañana', class: 'warning' };
+            } else if (diffDays <= 3) {
+                return { status: 'pronto', text: `${diffDays} días`, class: 'warning' };
+            } else if (diffDays <= 7) {
+                return { status: 'semana', text: `${diffDays} días`, class: 'info' };
+            }
+            return null;
+        }
+
+        function initializeTaskDateFilters() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+            
+            // Llenar selector de años
+            const yearSelect = document.getElementById('filterYear');
+            yearSelect.innerHTML = '';
+            for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+            
+            // Seleccionar mes actual
+            document.getElementById('filterMonth').value = currentMonth;
+            
+            // Actualizar días y seleccionar día actual
+            updateTaskDaysFilter();
+            document.getElementById('filterDay').value = currentDay;
+        }
+
+        function updateTaskDateFilters() {
+            updateTaskDaysFilter();
+        }
+
+        function updateTaskDaysFilter() {
+            const year = parseInt(document.getElementById('filterYear').value);
+            const month = document.getElementById('filterMonth').value;
+            const daySelect = document.getElementById('filterDay');
+            
+            daySelect.innerHTML = '<option value="">Todos</option>';
+            
+            if (month === '') return;
+            
+            const daysInMonth = new Date(year, parseInt(month) + 1, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const option = document.createElement('option');
+                option.value = day;
+                option.textContent = day;
+                daySelect.appendChild(option);
+            }
+        }
+
         function renderTasks() {
             const statusFilter = document.getElementById('filterStatus').value;
             const priorityFilter = document.getElementById('filterPriority').value;
             const workerFilter = document.getElementById('filterWorker')?.value;
+            const yearFilter = document.getElementById('filterYear')?.value;
+            const monthFilter = document.getElementById('filterMonth')?.value;
+            const dayFilter = document.getElementById('filterDay')?.value;
+            
             let filtered = [...cachedTasks];
-            if (statusFilter) filtered = filtered.filter(t => t.status === statusFilter);
+            
+            // Filtro de estado - por defecto mostrar pendiente y en_progreso si no hay filtro seleccionado
+            if (statusFilter === 'all') {
+                // Mostrar todas las tareas sin filtrar por estado
+            } else if (statusFilter === '') {
+                // Si no hay filtro, mostrar solo pendiente y en_progreso
+                filtered = filtered.filter(t => t.status === 'pendiente' || t.status === 'en_progreso');
+            } else {
+                filtered = filtered.filter(t => t.status === statusFilter);
+            }
+            
             if (priorityFilter) filtered = filtered.filter(t => t.priority === priorityFilter);
             if (workerFilter) filtered = filtered.filter(t => t.assigned_to === workerFilter);
+            
+            // Filtros de fecha - Por defecto filtrar por día actual
+            const hasYearFilter = yearFilter && yearFilter !== '';
+            const hasMonthFilter = monthFilter !== '';
+            const hasDayFilter = dayFilter && dayFilter !== '';
+            
+            if (hasYearFilter || hasMonthFilter || hasDayFilter) {
+                if (hasYearFilter && hasMonthFilter && hasDayFilter) {
+                    // Filtrar por día específico
+                    filtered = filtered.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getFullYear() === parseInt(yearFilter) &&
+                               taskDate.getMonth() === parseInt(monthFilter) &&
+                               taskDate.getDate() === parseInt(dayFilter);
+                    });
+                } else if (hasYearFilter && hasMonthFilter) {
+                    // Filtrar por mes
+                    filtered = filtered.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getFullYear() === parseInt(yearFilter) &&
+                               taskDate.getMonth() === parseInt(monthFilter);
+                    });
+                } else if (hasYearFilter) {
+                    // Filtrar por año
+                    filtered = filtered.filter(t => {
+                        const taskDate = new Date(t.created_at);
+                        return taskDate.getFullYear() === parseInt(yearFilter);
+                    });
+                }
+            }
 
             const columns = { principal: document.getElementById('columnPrincipal'), gestion: document.getElementById('columnGestion'), complementario: document.getElementById('columnComplementario') };
             const counts = { principal: 0, gestion: 0, complementario: 0 };
@@ -2538,6 +2785,8 @@
                     const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
                     const hasActive = sessions.some(s => s.is_active);
                     const assignee = task.assigned_profile?.full_name || 'Sin asignar';
+                    const deadlineStatus = task.status !== 'completada' ? getDeadlineStatus(task.end_date) : null;
+                    
                     col.innerHTML += `
                         <div class="task-card priority-${task.priority}" onclick='openTaskDetail(${JSON.stringify(task).replace(/'/g, "\\'")})'>
                             <div class="task-header">
@@ -2545,6 +2794,7 @@
                                 <span class="task-status status-${task.status}">${hasActive ? '<span class="status-dot"></span>' : ''}${formatStatus(task.status)}</span>
                             </div>
                             <div class="task-title">${task.title}</div>
+                            ${deadlineStatus ? `<div style="margin-top:var(--space-2)"><span class="badge badge-${deadlineStatus.class}" style="font-size:0.6875rem;padding:4px 8px"><i class="fas fa-calendar-alt"></i> ${deadlineStatus.text}</span></div>` : ''}
                             <div class="task-footer">
                                 <div class="task-assignee"><div class="assignee-avatar">${assignee.charAt(0).toUpperCase()}</div><span class="assignee-name">${assignee}</span></div>
                                 ${totalMins > 0 ? `<span class="task-time"><i class="fas fa-clock"></i> ${formatDuration(totalMins)}</span>` : ''}
@@ -2579,24 +2829,51 @@
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDescription').value = '';
             document.getElementById('taskEndDate').value = '';
-            document.getElementById('taskEndTime').value = '';
+            document.getElementById('taskEndHour').value = '';
+            document.getElementById('taskEndMinute').value = '';
+            document.getElementById('taskEndPeriod').value = 'PM';
+            
+            // Si es trabajador, ocultar el selector de asignado y mostrar mensaje informativo
+            const assigneeGroup = document.getElementById('assigneeGroup');
+            const workerInfo = document.getElementById('workerAutoAssignInfo');
+            
+            if (currentProfile?.role === 'trabajador') {
+                assigneeGroup.style.display = 'none';
+                workerInfo.style.display = 'flex';
+            } else {
+                assigneeGroup.style.display = 'block';
+                workerInfo.style.display = 'none';
+            }
+            
             document.getElementById('newTaskModal').classList.add('active');
         }
 
         async function createTask() {
             const title = document.getElementById('taskTitle').value.trim();
-            if (!title) { showToast('El título es obligatorio', 'error'); return; }
+            if (!title) { 
+                showToast('El título es obligatorio', 'error'); 
+                return; 
+            }
             
-            const endDate = document.getElementById('taskEndDate').value;
-            if (!endDate) { showToast('La fecha de término es obligatoria', 'error'); return; }
+            if (selectedTaskType === 'principal' && currentProfile?.role !== 'jefe') { 
+                showToast('Solo el jefe puede crear tareas principales', 'error'); 
+                return; 
+            }
             
-            if (selectedTaskType === 'principal' && currentProfile?.role !== 'jefe') { showToast('Solo el jefe puede crear tareas principales', 'error'); return; }
-            const assignee = document.getElementById('taskAssignee').value;
-            if (!assignee) { showToast('Selecciona un asignado', 'error'); return; }
+            // Si es trabajador, solo puede asignarse a sí mismo
+            let assignee;
+            if (currentProfile?.role === 'trabajador') {
+                assignee = currentUser.id;
+            } else {
+                assignee = document.getElementById('taskAssignee').value;
+                if (!assignee) { 
+                    showToast('Selecciona un asignado', 'error'); 
+                    return; 
+                }
+            }
             
             mostrarLoading('Creando', 'Guardando tarea...');
             try {
-                const endTime = document.getElementById('taskEndTime').value;
                 const taskData = { 
                     title, 
                     description: document.getElementById('taskDescription').value.trim(), 
@@ -2604,19 +2881,38 @@
                     priority: selectedPriority, 
                     assigned_to: assignee, 
                     created_by: currentUser.id, 
-                    status: 'pendiente',
-                    end_date: endDate
+                    status: 'pendiente'
                 };
                 
-                if (endTime) {
-                    taskData.end_time = endTime;
+                // Agregar end_date si tiene valor
+                const endDate = document.getElementById('taskEndDate').value;
+                if (endDate) taskData.end_date = endDate;
+                
+                // Construir end_time desde selectores si tienen valores
+                const endHour = document.getElementById('taskEndHour').value;
+                const endMinute = document.getElementById('taskEndMinute').value;
+                const endPeriod = document.getElementById('taskEndPeriod').value;
+                
+                if (endHour && endMinute) {
+                    let hour24 = parseInt(endHour);
+                    if (endPeriod === 'PM' && hour24 !== 12) hour24 += 12;
+                    if (endPeriod === 'AM' && hour24 === 12) hour24 = 0;
+                    taskData.end_time = `${hour24.toString().padStart(2, '0')}:${endMinute}:00`;
                 }
                 
                 const { data, error } = await supabase.from('tasks').insert([taskData]).select(`*, assigned_profile:profiles!tasks_assigned_to_fkey(id, full_name), created_profile:profiles!tasks_created_by_fkey(id, full_name), task_sessions(id, duration_minutes, is_active, start_time)`).single();
                 if (error) throw error;
-                cachedTasks.unshift(data); renderTasks();
-                ocultarLoading(); closeModal('newTaskModal'); showToast('Tarea creada correctamente', 'success');
-            } catch (error) { ocultarLoading(); showToast('Error: ' + error.message, 'error'); }
+                
+                cachedTasks.unshift(data); 
+                renderTasks();
+                ocultarLoading(); 
+                closeModal('newTaskModal'); 
+                showToast('Tarea creada correctamente', 'success');
+            } catch (error) { 
+                ocultarLoading(); 
+                console.error('Error completo:', error);
+                showToast('Error: ' + error.message, 'error'); 
+            }
         }
 
         // ============================================
@@ -2661,7 +2957,7 @@
                     <div class="detail-item"><div class="detail-label">Creado por</div><div class="detail-value">${task.created_profile?.full_name || 'N/A'}</div></div>
                     <div class="detail-item"><div class="detail-label">Fecha Creación</div><div class="detail-value">${new Date(task.created_at).toLocaleDateString('es-ES')}</div></div>
                     ${task.end_date ? `<div class="detail-item"><div class="detail-label">Fecha Término</div><div class="detail-value">${new Date(task.end_date).toLocaleDateString('es-ES')}</div></div>` : ''}
-                    ${task.end_time ? `<div class="detail-item"><div class="detail-label">Hora Término</div><div class="detail-value">${task.end_time}</div></div>` : ''}
+                    ${task.end_time ? `<div class="detail-item"><div class="detail-label">Hora Término</div><div class="detail-value">${formatTime12Hour(task.end_time)}</div></div>` : ''}
                 </div>
                 <div class="task-actions">${actions}</div>
                 ${!isJefe && activeSession ? '<div class="info-box"><i class="fas fa-info-circle"></i><p>Solo el jefe puede pausar o completar tareas en progreso</p></div>' : ''}`;
@@ -2941,11 +3237,28 @@
             const availableHoursPerDay = 9.5;
             const totalAvailableMinutes = workingDays * workdayMinutes;
             const totalAvailableHours = workingDays * availableHoursPerDay;
+            const availableHours = Math.floor(totalAvailableHours);
+            const availableMins = Math.round((totalAvailableHours % 1) * 60);
+            const availableHoursDisplay = availableMins > 0 ? `${availableHours}h ${availableMins}m` : `${availableHours}h`;
             
             // Calcular datos para cada trabajador
             const productivityData = cachedProfiles.map(worker => {
                 const workedMinutes = getWorkedMinutesForUser(worker.id, year, month);
-                const workedHours = (workedMinutes / 60).toFixed(1);
+                const workedHours = Math.floor(workedMinutes / 60);
+                const workedMins = workedMinutes % 60;
+                
+                // Formato de horas trabajadas
+                let workedDisplay;
+                if (workedMinutes === 0) {
+                    workedDisplay = '0h';
+                } else if (workedHours > 0 && workedMins > 0) {
+                    workedDisplay = `${workedHours}h ${workedMins}m`;
+                } else if (workedHours > 0) {
+                    workedDisplay = `${workedHours}h`;
+                } else {
+                    workedDisplay = `${workedMins}m`;
+                }
+                
                 const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100).toFixed(1) : 0;
                 
                 // Contar tareas completadas
@@ -2960,7 +3273,7 @@
                 return {
                     name: worker.full_name || 'Usuario',
                     workedMinutes,
-                    workedHours: parseFloat(workedHours),
+                    workedDisplay,
                     productivity: parseFloat(productivity),
                     completedTasks
                 };
@@ -3037,8 +3350,8 @@
                 return `<tr>
                     <td style="font-weight:600">${d.name}</td>
                     <td>${workingDays} días</td>
-                    <td style="font-family:var(--font-mono)">${totalAvailableHours.toFixed(1)}h</td>
-                    <td style="font-family:var(--font-mono);font-weight:600;color:var(--accent-primary)">${d.workedHours}h</td>
+                    <td style="font-family:var(--font-mono);font-weight:500">${availableHoursDisplay}</td>
+                    <td style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">${d.workedDisplay}</td>
                     <td><span class="badge badge-${productivityBadge}" style="font-size:0.8125rem">${d.productivity}%</span></td>
                     <td><span class="badge badge-info">${d.completedTasks} tareas</span></td>
                 </tr>`;
@@ -3139,6 +3452,10 @@
                 initializeProductivityFilters();
                 renderProductivity();
             }
+            if (view === 'tasks') {
+                initializeTaskDateFilters();
+                renderTasks();
+            }
             if (view === 'workers') renderWorkers();
         }
 
@@ -3188,7 +3505,7 @@
 
         loadTheme();
         initApp();
-        console.log('✅ TaskFlow Pro Ultra v4.2 - Diseño Ultra Moderno 2025 + Productividad de Usuarios');
+        console.log('✅ TaskFlow Pro Ultra v4.5 - Hora AM/PM + Feriados Perú + Filtros de Fecha en Tareas');
     </script>
 </body>
 </html>
