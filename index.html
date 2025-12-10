@@ -1262,11 +1262,12 @@
         function populateAssignees() {
             const select = document.getElementById('taskAssignee');
             select.innerHTML = '';
-            if (cachedProfiles.length === 0) { select.innerHTML = '<option value="">No hay usuarios</option>'; return; }
-            cachedProfiles.forEach(p => {
+            // Solo mostrar trabajadores, NO jefes
+            const trabajadores = cachedProfiles.filter(p => p.role === 'trabajador');
+            if (trabajadores.length === 0) { select.innerHTML = '<option value="">No hay trabajadores</option>'; return; }
+            trabajadores.forEach(p => {
                 const option = document.createElement('option');
-                option.value = p.id; option.textContent = `${p.full_name || 'Sin nombre'} (${p.role || 'trabajador'})`;
-                if (currentUser && p.id === currentUser.id) option.selected = true;
+                option.value = p.id; option.textContent = `${p.full_name || 'Sin nombre'} (${p.role})`;
                 select.appendChild(option);
             });
         }
@@ -1274,14 +1275,30 @@
         // ============================================
         // RENDER TASKS
         // ============================================
-        function getDeadlineStatus(endDate) {
+        function getDeadlineStatus(endDate, endTime = null) {
             if (!endDate) return null;
+            const now = new Date();
             const today = new Date(); today.setHours(0, 0, 0, 0);
-            const deadline = new Date(endDate); deadline.setHours(0, 0, 0, 0);
+            
+            // Parsear fecha correctamente
+            const [year, month, day] = endDate.split('-').map(Number);
+            const deadline = new Date(year, month - 1, day);
+            deadline.setHours(0, 0, 0, 0);
+            
             const diffTime = deadline - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) return { status: 'vencida', text: 'Vencida', class: 'danger' };
-            else if (diffDays === 0) return { status: 'hoy', text: 'Vence hoy', class: 'warning' };
+            
+            // Si tiene hora de término, verificar si se pasó la hora
+            if (endTime && diffDays === 0) {
+                const [hours, minutes] = endTime.split(':').map(Number);
+                const deadlineWithTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+                if (now > deadlineWithTime) {
+                    return { status: 'vencida', text: '⚠️ VENCIDA (hora)', class: 'danger' };
+                }
+            }
+            
+            if (diffDays < 0) return { status: 'vencida', text: '⚠️ VENCIDA', class: 'danger' };
+            else if (diffDays === 0) return { status: 'hoy', text: '⏰ Vence HOY', class: 'warning' };
             else if (diffDays === 1) return { status: 'manana', text: 'Vence mañana', class: 'warning' };
             else if (diffDays <= 3) return { status: 'pronto', text: `${diffDays} días`, class: 'warning' };
             else if (diffDays <= 7) return { status: 'semana', text: `${diffDays} días`, class: 'info' };
@@ -1366,7 +1383,7 @@
                     const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
                     const hasActive = sessions.some(s => s.is_active);
                     const assignee = task.assigned_profile?.full_name || 'Sin asignar';
-                    const deadlineStatus = task.status !== 'completada' ? getDeadlineStatus(task.end_date) : null;
+                    const deadlineStatus = task.status !== 'completada' ? getDeadlineStatus(task.end_date, task.end_time) : null;
                     col.innerHTML += `<div class="task-card priority-${task.priority}" onclick='openTaskDetail(${JSON.stringify(task).replace(/'/g, "\\'")})'><div class="task-header"><span class="task-priority priority-${task.priority}">${task.priority}</span><span class="task-status status-${task.status}">${hasActive ? '<span class="status-dot"></span>' : ''}${formatStatus(task.status)}</span></div><div class="task-title">${task.title}</div>${deadlineStatus ? `<div style="margin-top:var(--space-2)"><span class="badge badge-${deadlineStatus.class}" style="font-size:0.6875rem;padding:4px 8px"><i class="fas fa-calendar-alt"></i> ${deadlineStatus.text}</span></div>` : ''}<div class="task-footer"><div class="task-assignee"><div class="assignee-avatar">${assignee.charAt(0).toUpperCase()}</div><span class="assignee-name">${assignee}</span></div>${totalMins > 0 ? `<span class="task-time"><i class="fas fa-clock"></i> ${formatDuration(totalMins)}</span>` : ''}</div></div>`;
                 });
                 Object.keys(columns).forEach(type => { if (counts[type] === 0) columns[type].innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay tareas</p></div>'; });
@@ -1476,6 +1493,7 @@
             const isOwner = task.assigned_to === currentUser?.id;
             const isJefe = currentProfile?.role === 'jefe';
             const canControl = isOwner || isJefe;
+            const deadlineStatus = task.status !== 'completada' ? getDeadlineStatus(task.end_date, task.end_time) : null;
             let actions = '';
             if (task.status !== 'completada') {
                 if (!activeSession && (task.status === 'pendiente' || task.status === 'pausada')) {
@@ -1487,7 +1505,16 @@
                 }
             }
             if (isJefe) actions += `<button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')"><i class="fas fa-trash"></i> Eliminar</button>`;
-            document.getElementById('taskDetailContent').innerHTML = `<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-5);flex-wrap:wrap"><span class="badge badge-${task.priority === 'alta' ? 'danger' : task.priority === 'media' ? 'warning' : 'success'}">${task.priority}</span><span class="badge badge-${task.status === 'completada' ? 'success' : task.status === 'en_progreso' ? 'info' : 'muted'}">${formatStatus(task.status)}</span></div><h2 style="font-size:1.375rem;font-weight:700;margin-bottom:var(--space-4);letter-spacing:-0.02em">${task.title}</h2>${task.description ? `<p style="color:var(--text-secondary);margin-bottom:var(--space-6);line-height:1.6">${task.description}</p>` : ''}<div class="time-tracker"><div class="time-display" id="timerDisplay">${formatDuration(totalMins)}</div><div class="time-label ${activeSession ? 'active' : ''}">${activeSession ? '<span class="status-dot"></span> En progreso' : 'Tiempo acumulado'}</div>${totalMins > 0 ? `<div style="margin-top:var(--space-3)"><span class="badge badge-${workdayCalc.badgeClass}" style="font-size:0.875rem;padding:6px 14px">${workdayCalc.percentage}% de la jornada laboral (9.5h)</span></div>` : ''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Tipo</div><div class="detail-value">${formatTaskType(task.task_type)}</div></div><div class="detail-item"><div class="detail-label">Asignado</div><div class="detail-value">${task.assigned_profile?.full_name || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Creado por</div><div class="detail-value">${task.created_profile?.full_name || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Fecha Creación</div><div class="detail-value">${new Date(task.created_at).toLocaleDateString('es-ES')}</div></div>${task.end_date ? `<div class="detail-item"><div class="detail-label">Fecha Término</div><div class="detail-value">${new Date(task.end_date).toLocaleDateString('es-ES')}</div></div>` : ''}${task.end_time ? `<div class="detail-item"><div class="detail-label">Hora Término</div><div class="detail-value">${formatTime12Hour(task.end_time)}</div></div>` : ''}</div><div class="task-actions">${actions}</div>${!isJefe && activeSession ? '<div class="info-box"><i class="fas fa-info-circle"></i><p>Solo el jefe puede pausar o completar tareas en progreso</p></div>' : ''}`;
+            
+            // Alerta de vencimiento
+            let deadlineAlert = '';
+            if (deadlineStatus && deadlineStatus.status === 'vencida') {
+                deadlineAlert = `<div style="background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(239,68,68,0.1));border:1px solid var(--danger);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-5);display:flex;align-items:center;gap:var(--space-3)"><i class="fas fa-exclamation-triangle" style="color:var(--danger);font-size:1.25rem"></i><div><strong style="color:var(--danger)">⚠️ TAREA VENCIDA</strong><p style="font-size:0.875rem;color:var(--text-secondary);margin-top:2px">Esta tarea ha superado su fecha/hora límite de entrega</p></div></div>`;
+            } else if (deadlineStatus && deadlineStatus.status === 'hoy') {
+                deadlineAlert = `<div style="background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.1));border:1px solid var(--warning);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-5);display:flex;align-items:center;gap:var(--space-3)"><i class="fas fa-clock" style="color:var(--warning);font-size:1.25rem"></i><div><strong style="color:var(--warning)">⏰ VENCE HOY</strong><p style="font-size:0.875rem;color:var(--text-secondary);margin-top:2px">Esta tarea debe completarse hoy${task.end_time ? ` antes de las ${formatTime12Hour(task.end_time)}` : ''}</p></div></div>`;
+            }
+            
+            document.getElementById('taskDetailContent').innerHTML = `${deadlineAlert}<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-5);flex-wrap:wrap"><span class="badge badge-${task.priority === 'alta' ? 'danger' : task.priority === 'media' ? 'warning' : 'success'}">${task.priority}</span><span class="badge badge-${task.status === 'completada' ? 'success' : task.status === 'en_progreso' ? 'info' : 'muted'}">${formatStatus(task.status)}</span>${deadlineStatus ? `<span class="badge badge-${deadlineStatus.class}">${deadlineStatus.text}</span>` : ''}</div><h2 style="font-size:1.375rem;font-weight:700;margin-bottom:var(--space-4);letter-spacing:-0.02em">${task.title}</h2>${task.description ? `<p style="color:var(--text-secondary);margin-bottom:var(--space-6);line-height:1.6">${task.description}</p>` : ''}<div class="time-tracker"><div class="time-display" id="timerDisplay">${formatDuration(totalMins)}</div><div class="time-label ${activeSession ? 'active' : ''}">${activeSession ? '<span class="status-dot"></span> En progreso' : 'Tiempo acumulado'}</div>${totalMins > 0 ? `<div style="margin-top:var(--space-3)"><span class="badge badge-${workdayCalc.badgeClass}" style="font-size:0.875rem;padding:6px 14px">${workdayCalc.percentage}% de la jornada laboral (9.5h)</span></div>` : ''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Tipo</div><div class="detail-value">${formatTaskType(task.task_type)}</div></div><div class="detail-item"><div class="detail-label">Asignado</div><div class="detail-value">${task.assigned_profile?.full_name || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Creado por</div><div class="detail-value">${task.created_profile?.full_name || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Fecha Creación</div><div class="detail-value">${new Date(task.created_at).toLocaleDateString('es-ES')}</div></div>${task.end_date ? `<div class="detail-item"><div class="detail-label">Fecha Término</div><div class="detail-value">${new Date(task.end_date + 'T12:00:00').toLocaleDateString('es-ES')}</div></div>` : ''}${task.end_time ? `<div class="detail-item"><div class="detail-label">Hora Término</div><div class="detail-value">${formatTime12Hour(task.end_time)}</div></div>` : ''}</div><div class="task-actions">${actions}</div>${!isJefe && activeSession ? '<div class="info-box"><i class="fas fa-info-circle"></i><p>Solo el jefe puede pausar o completar tareas en progreso</p></div>' : ''}`;
             document.getElementById('taskDetailModal').classList.add('active');
             if (activeSession) {
                 const startDate = new Date(activeSession.start_time);
@@ -1905,17 +1932,27 @@
             let trendLabels, trendData, productivityData, trendTitle = 'Tendencia y Productividad';
             
             if (isSingleDay) { 
+                // Un solo día seleccionado - mostrar por horas
                 trendTitle = `Tendencia - Día ${selectedDays[0]} de ${monthNames[selectedMonths[0]]}`; 
                 trendLabels = ['8h', '10h', '12h', '14h', '16h', '18h']; 
                 trendData = trendLabels.map((_, i) => { const hour = 8 + (i * 2); return filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getHours() <= hour; }).length; }); 
                 productivityData = trendLabels.map((_, i) => { const hour = 8 + (i * 2); return filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getHours() <= hour && t.status === 'completada'; }).length; });
             }
+            else if (selectedDays.length > 1 && selectedMonths.length === 1) {
+                // Múltiples días seleccionados en un mes - mostrar esos días
+                const month = selectedMonths[0];
+                trendTitle = `Tendencia - Días seleccionados de ${monthNames[month]} ${year}`; 
+                trendLabels = selectedDays.map(d => d.toString()).sort((a,b) => parseInt(a) - parseInt(b));
+                trendData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum); }).length); 
+                productivityData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum) && t.status === 'completada'; }).length);
+            }
             else if (isSingleMonth) { 
+                // Un solo mes seleccionado SIN días - mostrar TODOS los días del mes
                 const month = selectedMonths[0]; 
                 trendTitle = `Tendencia - ${monthNames[month]} ${year}`; 
                 const daysInMonth = new Date(year, month + 1, 0).getDate(); 
-                const startDay = Math.max(1, daysInMonth - 6); 
-                trendLabels = [...Array(Math.min(7, daysInMonth))].map((_, i) => `${startDay + i}`); 
+                // Mostrar TODOS los días del mes
+                trendLabels = [...Array(daysInMonth)].map((_, i) => `${i + 1}`); 
                 trendData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum); }).length); 
                 productivityData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum) && t.status === 'completada'; }).length);
             }
@@ -2143,13 +2180,15 @@
         // WORKERS
         // ============================================
         function renderWorkers() {
-            const workersStats = cachedProfiles.map(worker => {
+            // Solo mostrar trabajadores, NO jefes
+            const trabajadores = cachedProfiles.filter(p => p.role === 'trabajador');
+            const workersStats = trabajadores.map(worker => {
                 const tasks = cachedTasks.filter(t => t.assigned_to === worker.id);
                 const completed = tasks.filter(t => t.status === 'completada').length;
                 const totalMins = tasks.reduce((sum, t) => sum + (t.task_sessions || []).filter(s => !s.is_active).reduce((s, sess) => s + (sess.duration_minutes || 0), 0), 0);
                 return { ...worker, tasks: tasks.length, completed, totalMins, efficiency: tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0 };
             });
-            document.getElementById('workersStats').innerHTML = `<div class="stat-card"><div class="stat-header"><span class="stat-label">Total Equipo</span><div class="stat-icon cyan"><i class="fas fa-users"></i></div></div><div class="stat-value">${workersStats.length}</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Miembros Activos</span><div class="stat-icon success"><i class="fas fa-user-check"></i></div></div><div class="stat-value">${workersStats.filter(w => w.tasks > 0).length}</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Efectividad Promedio</span><div class="stat-icon purple"><i class="fas fa-chart-line"></i></div></div><div class="stat-value">${Math.round(workersStats.reduce((s, w) => s + w.efficiency, 0) / workersStats.length || 0)}%</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Tiempo Total</span><div class="stat-icon primary"><i class="fas fa-clock"></i></div></div><div class="stat-value" style="font-size:1.75rem">${formatDuration(workersStats.reduce((s, w) => s + w.totalMins, 0))}</div></div>`;
+            document.getElementById('workersStats').innerHTML = `<div class="stat-card"><div class="stat-header"><span class="stat-label">Total Trabajadores</span><div class="stat-icon cyan"><i class="fas fa-users"></i></div></div><div class="stat-value">${workersStats.length}</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Miembros Activos</span><div class="stat-icon success"><i class="fas fa-user-check"></i></div></div><div class="stat-value">${workersStats.filter(w => w.tasks > 0).length}</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Efectividad Promedio</span><div class="stat-icon purple"><i class="fas fa-chart-line"></i></div></div><div class="stat-value">${Math.round(workersStats.reduce((s, w) => s + w.efficiency, 0) / workersStats.length || 0)}%</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Tiempo Total</span><div class="stat-icon primary"><i class="fas fa-clock"></i></div></div><div class="stat-value" style="font-size:1.75rem">${formatDuration(workersStats.reduce((s, w) => s + w.totalMins, 0))}</div></div>`;
             document.getElementById('workersGrid').innerHTML = workersStats.map(w => `<div class="worker-card" onclick="filterByWorker('${w.id}')"><div class="worker-header"><div class="worker-avatar">${(w.full_name || 'U').charAt(0).toUpperCase()}</div><div><div class="worker-name">${w.full_name || 'Usuario'}</div><span class="user-role ${w.role}">${w.role}</span></div></div><div class="worker-stats"><div class="worker-stat"><div class="worker-stat-value">${w.tasks}</div><div class="worker-stat-label">Tareas</div></div><div class="worker-stat"><div class="worker-stat-value">${w.completed}</div><div class="worker-stat-label">Hechas</div></div><div class="worker-stat"><div class="worker-stat-value" style="color:${w.efficiency >= 70 ? 'var(--success)' : w.efficiency >= 40 ? 'var(--warning)' : 'var(--danger)'}">${w.efficiency}%</div><div class="worker-stat-label">Efect.</div></div></div></div>`).join('') || '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-users"></i><p>No hay trabajadores registrados</p></div>';
         }
 
