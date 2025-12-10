@@ -2567,6 +2567,84 @@
         // ============================================
         // INIT
         // ============================================
+        // ============================================
+        // AUTO-PAUSA A LAS 7PM
+        // ============================================
+        async function autoPauseAllTasks() {
+            // Solo ejecutar si es jefe (para evitar múltiples ejecuciones)
+            if (currentProfile?.role !== 'jefe') return;
+            
+            const tasksInProgress = cachedTasks.filter(t => t.status === 'en_progreso');
+            if (tasksInProgress.length === 0) {
+                console.log('⏰ 7PM: No hay tareas en progreso para pausar');
+                return;
+            }
+            
+            console.log(`⏰ 7PM: Pausando ${tasksInProgress.length} tareas automáticamente...`);
+            
+            let pausedCount = 0;
+            for (const task of tasksInProgress) {
+                try {
+                    // Cerrar sesión activa si existe
+                    const { data: session } = await supabase
+                        .from('task_sessions')
+                        .select('*')
+                        .eq('task_id', task.id)
+                        .eq('is_active', true)
+                        .single();
+                    
+                    if (session) {
+                        const duration = Math.floor((new Date() - new Date(session.start_time)) / 60000);
+                        await supabase
+                            .from('task_sessions')
+                            .update({ 
+                                is_active: false, 
+                                duration_minutes: duration, 
+                                end_time: new Date().toISOString() 
+                            })
+                            .eq('id', session.id);
+                    }
+                    
+                    // Cambiar estado a pausada
+                    await supabase
+                        .from('tasks')
+                        .update({ status: 'pausada' })
+                        .eq('id', task.id);
+                    
+                    pausedCount++;
+                } catch (error) {
+                    console.error(`Error pausando tarea ${task.id}:`, error);
+                }
+            }
+            
+            if (pausedCount > 0) {
+                showToast(`⏰ Fin de jornada: ${pausedCount} tarea(s) pausada(s) automáticamente`, 'info');
+                await cargarDatos();
+            }
+        }
+        
+        function setupAutoPauseScheduler() {
+            // Verificar cada minuto si son las 7PM
+            const checkTime = () => {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                
+                // Ejecutar a las 19:00 (7PM)
+                if (hours === 19 && minutes === 0) {
+                    autoPauseAllTasks();
+                }
+            };
+            
+            // Verificar inmediatamente por si ya son las 7PM
+            checkTime();
+            
+            // Configurar intervalo cada minuto
+            setInterval(checkTime, 60000);
+            
+            console.log('⏰ Auto-pausa programada para las 7:00 PM');
+        }
+
         async function initApp() {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
@@ -2583,6 +2661,7 @@
                 if (profile?.role === 'jefe') { document.getElementById('adminNav').style.display = 'block'; document.getElementById('mobileWorkersNav').style.display = 'flex'; }
                 await cargarDatos();
                 setupRealtime();
+                setupAutoPauseScheduler();
             }
         }
 
