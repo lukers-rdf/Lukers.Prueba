@@ -885,7 +885,7 @@
                     <div class="table-card" style="margin-top: var(--space-6);">
                         <div class="table-header">
                             <i class="fas fa-table" style="color: var(--info); font-size: 1.25rem;"></i>
-                            <span class="table-title">Últimas Tareas Completadas</span>
+                            <span class="table-title">Tareas con Actividad en el Período</span>
                         </div>
                         <div class="table-container">
                             <table>
@@ -2125,10 +2125,13 @@
         }
 
         function renderProductivity() {
+            // Obtener valores de filtros
             const year = prodQlikFilters.year.length > 0 ? parseInt(prodQlikFilters.year[0]) : new Date().getFullYear();
-            const selectedMonths = prodQlikFilters.month.map(m => parseInt(m));
-            const selectedDays = prodQlikFilters.day.map(d => parseInt(d));
+            const selectedMonths = prodQlikFilters.month.length > 0 ? prodQlikFilters.month.map(m => parseInt(m)) : [];
+            const selectedDays = prodQlikFilters.day.length > 0 ? prodQlikFilters.day.map(d => parseInt(d)) : [];
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            
+            console.log('renderProductivity - Filtros:', { year, selectedMonths, selectedDays });
             
             // Construir subtítulo
             let subtitle = 'Productividad';
@@ -2140,16 +2143,6 @@
                 else subtitle = `Productividad de ${selectedMonths.length} meses en ${year}`;
             } else { subtitle = `Productividad de ${year}`; }
             document.getElementById('headerSubtitle').textContent = subtitle;
-            
-            // Función para verificar si una fecha coincide con los filtros
-            function matchesFilter(date) {
-                if (!date) return false;
-                const d = new Date(date);
-                if (d.getFullYear() !== year) return false;
-                if (selectedMonths.length > 0 && !selectedMonths.includes(d.getMonth())) return false;
-                if (selectedDays.length > 0 && selectedMonths.length === 1 && !selectedDays.includes(d.getDate())) return false;
-                return true;
-            }
             
             // Calcular días laborables según filtros
             let workingDays = 0;
@@ -2164,6 +2157,7 @@
             } else {
                 for (let m = 0; m < 12; m++) workingDays += getWorkingDaysInMonth(year, m);
             }
+            if (workingDays === 0) workingDays = 1; // Evitar división por cero
             
             const workdayMinutes = 570;
             const totalAvailableMinutes = workingDays * workdayMinutes;
@@ -2172,86 +2166,152 @@
             const availableMins = Math.round((totalAvailableHours % 1) * 60);
             const availableHoursDisplay = availableMins > 0 ? `${availableHours}h ${availableMins}m` : `${availableHours}h`;
             
-            // Calcular productividad por trabajador basándose en SESIONES, no en fecha de creación de tarea
-            const productivityData = cachedProfiles.filter(worker => worker.role === 'trabajador').map(worker => {
+            // Función para verificar si una sesión coincide con los filtros
+            const sessionMatchesFilter = (session) => {
+                if (!session || !session.start_time) return false;
+                const d = new Date(session.start_time);
+                if (d.getFullYear() !== year) return false;
+                if (selectedMonths.length > 0 && !selectedMonths.includes(d.getMonth())) return false;
+                if (selectedDays.length > 0 && !selectedDays.includes(d.getDate())) return false;
+                return true;
+            };
+            
+            // Calcular productividad por trabajador
+            const trabajadores = cachedProfiles.filter(p => p.role === 'trabajador');
+            const productivityData = trabajadores.map(worker => {
                 let workedMinutes = 0;
-                let completedTasksCount = 0;
+                let tasksInPeriod = 0;
                 
                 // Obtener todas las tareas del trabajador
                 const workerTasks = cachedTasks.filter(t => t.assigned_to === worker.id);
                 
-                // Calcular minutos trabajados según las SESIONES que coinciden con el filtro
                 workerTasks.forEach(task => {
-                    const sessions = (task.task_sessions || []).filter(s => !s.is_active && s.duration_minutes);
+                    const sessions = (task.task_sessions || []).filter(s => !s.is_active && s.duration_minutes > 0);
+                    let taskHasMatchingSessions = false;
+                    
                     sessions.forEach(s => {
-                        // Verificar si la sesión coincide con los filtros de fecha
-                        if (s.start_time && matchesFilter(s.start_time)) {
+                        if (sessionMatchesFilter(s)) {
                             workedMinutes += s.duration_minutes || 0;
+                            taskHasMatchingSessions = true;
                         }
                     });
                     
-                    // Contar tareas completadas que coinciden con el filtro (por fecha de completado o última sesión)
-                    if (task.status === 'completada') {
-                        // Buscar la última sesión para determinar cuándo se completó
-                        const lastSession = sessions.sort((a, b) => new Date(b.start_time) - new Date(a.start_time))[0];
-                        if (lastSession && matchesFilter(lastSession.start_time)) {
-                            completedTasksCount++;
-                        } else if (!lastSession && matchesFilter(task.created_at)) {
-                            // Si no hay sesiones, usar fecha de creación
-                            completedTasksCount++;
-                        }
-                    }
+                    if (taskHasMatchingSessions) tasksInPeriod++;
                 });
                 
                 const workedHours = Math.floor(workedMinutes / 60);
                 const workedMins = workedMinutes % 60;
-                let workedDisplay;
-                if (workedMinutes === 0) workedDisplay = '0h';
-                else if (workedHours > 0 && workedMins > 0) workedDisplay = `${workedHours}h ${workedMins}m`;
-                else if (workedHours > 0) workedDisplay = `${workedHours}h`;
-                else workedDisplay = `${workedMins}m`;
+                let workedDisplay = '0h';
+                if (workedMinutes > 0) {
+                    if (workedHours > 0 && workedMins > 0) workedDisplay = `${workedHours}h ${workedMins}m`;
+                    else if (workedHours > 0) workedDisplay = `${workedHours}h`;
+                    else workedDisplay = `${workedMins}m`;
+                }
                 
-                const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100).toFixed(1) : 0;
-                return { name: worker.full_name || 'Usuario', workedMinutes, workedDisplay, productivity: parseFloat(productivity), completedTasks: completedTasksCount };
+                const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100) : 0;
+                
+                return { 
+                    name: worker.full_name || 'Usuario', 
+                    workedMinutes, 
+                    workedDisplay, 
+                    productivity: parseFloat(productivity.toFixed(1)), 
+                    tasksInPeriod 
+                };
             });
             productivityData.sort((a, b) => b.productivity - a.productivity);
             
+            console.log('productivityData:', productivityData);
+            
             // Renderizar gráfica
-            const chartColors = { accent: '#6366f1', success: '#10b981', warning: '#f59e0b', danger: '#ef4444', info: '#3b82f6', text: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim(), border: getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim() };
+            const chartColors = { 
+                accent: '#6366f1', 
+                success: '#10b981', 
+                warning: '#f59e0b', 
+                danger: '#ef4444', 
+                info: '#3b82f6', 
+                text: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim(), 
+                border: getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim() 
+            };
+            
             if (charts.productivityUsers) charts.productivityUsers.destroy();
-            const barColors = productivityData.map(d => { if (d.productivity >= 80) return chartColors.success; if (d.productivity >= 50) return chartColors.warning; return chartColors.danger; });
-            charts.productivityUsers = new Chart(document.getElementById('productivityUserChart'), { type: 'bar', data: { labels: productivityData.map(d => d.name), datasets: [{ label: 'Productividad (%)', data: productivityData.map(d => d.productivity), backgroundColor: barColors, borderRadius: 12, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return `Productividad: ${context.parsed.y.toFixed(1)}%`; } } } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, max: 100, ticks: { callback: function(value) { return value + '%'; } } } } } });
+            const barColors = productivityData.map(d => { 
+                if (d.productivity >= 80) return chartColors.success; 
+                if (d.productivity >= 50) return chartColors.warning; 
+                return chartColors.danger; 
+            });
             
-            // Renderizar tabla de productividad
-            document.getElementById('productivityTable').innerHTML = productivityData.map(d => { 
-                const productivityBadge = d.productivity >= 80 ? 'success' : d.productivity >= 50 ? 'warning' : 'danger'; 
-                return `<tr><td style="font-weight:600">${d.name}</td><td>${workingDays} días</td><td style="font-family:var(--font-mono);font-weight:500">${availableHoursDisplay}</td><td style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">${d.workedDisplay}</td><td><span class="badge badge-${productivityBadge}" style="font-size:0.8125rem">${d.productivity}%</span></td><td><span class="badge badge-info">${d.completedTasks} tareas</span></td></tr>`; 
-            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+            charts.productivityUsers = new Chart(document.getElementById('productivityUserChart'), { 
+                type: 'bar', 
+                data: { 
+                    labels: productivityData.map(d => d.name), 
+                    datasets: [{ 
+                        label: 'Productividad (%)', 
+                        data: productivityData.map(d => d.productivity), 
+                        backgroundColor: barColors, 
+                        borderRadius: 12, 
+                        borderSkipped: false 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { callbacks: { label: (ctx) => `Productividad: ${ctx.parsed.y.toFixed(1)}%` } } 
+                    }, 
+                    scales: { 
+                        x: { grid: { display: false } }, 
+                        y: { grid: { color: chartColors.border }, beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } } 
+                    } 
+                } 
+            });
             
-            // Renderizar tabla de tareas completadas (filtradas por sesiones)
-            const allCompletedTasks = cachedTasks.filter(t => t.status === 'completada').filter(task => {
+            // Renderizar tabla de productividad por trabajador
+            document.getElementById('productivityTable').innerHTML = productivityData.length > 0 
+                ? productivityData.map(d => { 
+                    const badge = d.productivity >= 80 ? 'success' : d.productivity >= 50 ? 'warning' : 'danger'; 
+                    return `<tr>
+                        <td style="font-weight:600">${d.name}</td>
+                        <td>${workingDays} días</td>
+                        <td style="font-family:var(--font-mono);font-weight:500">${availableHoursDisplay}</td>
+                        <td style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">${d.workedDisplay}</td>
+                        <td><span class="badge badge-${badge}" style="font-size:0.8125rem">${d.productivity}%</span></td>
+                        <td><span class="badge badge-info">${d.tasksInPeriod} tareas</span></td>
+                    </tr>`; 
+                }).join('') 
+                : '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+            
+            // Renderizar tabla de TODAS las tareas (no solo completadas) que tienen sesiones en el período
+            const allTasksInPeriod = cachedTasks.filter(task => {
                 const sessions = (task.task_sessions || []).filter(s => !s.is_active);
-                if (sessions.length > 0) {
-                    // Verificar si alguna sesión coincide con el filtro
-                    return sessions.some(s => s.start_time && matchesFilter(s.start_time));
-                }
-                // Si no hay sesiones, usar fecha de creación
-                return matchesFilter(task.created_at);
+                return sessions.some(s => sessionMatchesFilter(s));
             }).sort((a, b) => {
-                // Ordenar por última sesión
-                const aLastSession = (a.task_sessions || []).filter(s => !s.is_active).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
-                const bLastSession = (b.task_sessions || []).filter(s => !s.is_active).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
-                const aDate = aLastSession ? new Date(aLastSession.start_time) : new Date(a.created_at);
-                const bDate = bLastSession ? new Date(bLastSession.start_time) : new Date(b.created_at);
+                const aLast = (a.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s)).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
+                const bLast = (b.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s)).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
+                const aDate = aLast ? new Date(aLast.start_time) : new Date(0);
+                const bDate = bLast ? new Date(bLast.start_time) : new Date(0);
                 return bDate - aDate;
-            }).slice(0, 10);
+            }).slice(0, 15);
             
-            document.getElementById('productivityCompletedTable').innerHTML = allCompletedTasks.map(t => { 
-                const sessions = t.task_sessions || []; 
-                const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0); 
-                const workdayCalc = calculateWorkdayPercentage(totalMins); 
-                return `<tr><td style="font-weight:600">${t.title}</td><td>${formatTaskType(t.task_type)}</td><td><span class="badge badge-success">${formatStatus(t.status)}</span></td><td>${t.assigned_profile?.full_name || 'N/A'}</td><td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td><td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td><td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td></tr>`; 
-            }).join('') || '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas completadas en este período</td></tr>';
+            console.log('allTasksInPeriod:', allTasksInPeriod.length);
+            
+            document.getElementById('productivityCompletedTable').innerHTML = allTasksInPeriod.length > 0 
+                ? allTasksInPeriod.map(t => { 
+                    const sessions = (t.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s));
+                    const totalMins = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0); 
+                    const workdayCalc = calculateWorkdayPercentage(totalMins);
+                    const statusClass = t.status === 'completada' ? 'success' : t.status === 'en_progreso' ? 'info' : t.status === 'pausada' ? 'warning' : 'muted';
+                    return `<tr>
+                        <td style="font-weight:600">${t.title}</td>
+                        <td>${formatTaskType(t.task_type)}</td>
+                        <td><span class="badge badge-${statusClass}">${formatStatus(t.status)}</span></td>
+                        <td>${t.assigned_profile?.full_name || 'N/A'}</td>
+                        <td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td>
+                        <td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td>
+                        <td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td>
+                    </tr>`; 
+                }).join('') 
+                : '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas con sesiones en este período</td></tr>';
         }
 
         // ============================================
