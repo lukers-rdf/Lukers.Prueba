@@ -1618,6 +1618,59 @@
         function getAvailableYears() { const years = new Set(); cachedTasks.forEach(task => { const year = new Date(task.created_at).getFullYear(); years.add(year); }); return Array.from(years).sort((a, b) => b - a); }
         function getAvailableMonths(selectedYear) { const months = new Set(); cachedTasks.forEach(task => { const taskDate = new Date(task.created_at); if (!selectedYear || taskDate.getFullYear() === parseInt(selectedYear)) months.add(taskDate.getMonth()); }); return Array.from(months).sort((a, b) => a - b); }
         function getAvailableDays(year, month) { const days = new Set(); cachedTasks.forEach(task => { const taskDate = new Date(task.created_at); if (taskDate.getFullYear() === parseInt(year) && taskDate.getMonth() === parseInt(month)) days.add(taskDate.getDate()); }); return Array.from(days).sort((a, b) => a - b); }
+        
+        // Función para obtener días disponibles basado en SESIONES de trabajo (para productividad)
+        function getAvailableDaysForProductivity(year, month) { 
+            const days = new Set(); 
+            cachedTasks.forEach(task => { 
+                const sessions = task.task_sessions || [];
+                sessions.forEach(s => {
+                    if (s.start_time) {
+                        const sessionDate = new Date(s.start_time); 
+                        if (sessionDate.getFullYear() === parseInt(year) && sessionDate.getMonth() === parseInt(month)) {
+                            days.add(sessionDate.getDate()); 
+                        }
+                    }
+                });
+            }); 
+            return Array.from(days).sort((a, b) => a - b); 
+        }
+        
+        // Función para obtener años disponibles basado en SESIONES de trabajo (para productividad)
+        function getAvailableYearsForProductivity() { 
+            const years = new Set(); 
+            cachedTasks.forEach(task => { 
+                const sessions = task.task_sessions || [];
+                sessions.forEach(s => {
+                    if (s.start_time) {
+                        const sessionDate = new Date(s.start_time); 
+                        years.add(sessionDate.getFullYear()); 
+                    }
+                });
+            }); 
+            // Si no hay sesiones, usar el año actual
+            if (years.size === 0) years.add(new Date().getFullYear());
+            return Array.from(years).sort((a, b) => b - a); 
+        }
+        
+        // Función para obtener meses disponibles basado en SESIONES de trabajo (para productividad)
+        function getAvailableMonthsForProductivity(selectedYear) { 
+            const months = new Set(); 
+            cachedTasks.forEach(task => { 
+                const sessions = task.task_sessions || [];
+                sessions.forEach(s => {
+                    if (s.start_time) {
+                        const sessionDate = new Date(s.start_time); 
+                        if (!selectedYear || sessionDate.getFullYear() === parseInt(selectedYear)) {
+                            months.add(sessionDate.getMonth()); 
+                        }
+                    }
+                });
+            }); 
+            // Si no hay sesiones, usar el mes actual
+            if (months.size === 0) months.add(new Date().getMonth());
+            return Array.from(months).sort((a, b) => a - b); 
+        }
 
         function initializeQlikFilters() {
             // RESET filters first
@@ -1774,10 +1827,11 @@
             const yearDropdown = document.getElementById('prodYearDropdown');
             if (!yearDropdown) return;
             yearDropdown.innerHTML = '';
-            const availableYears = getAvailableYears();
+            // Usar función específica para productividad que busca por sesiones
+            const availableYears = getAvailableYearsForProductivity();
             
             if (availableYears.length === 0) { 
-                yearDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+                yearDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin sesiones registradas</div>'; 
             } else {
                 availableYears.forEach(year => {
                     const div = document.createElement('div');
@@ -1808,12 +1862,13 @@
             if (!monthDropdown) return;
             monthDropdown.innerHTML = '';
             const selectedYear = prodQlikFilters.year.length === 1 ? prodQlikFilters.year[0] : null;
-            const availableMonths = getAvailableMonths(selectedYear);
+            // Usar función específica para productividad que busca por sesiones
+            const availableMonths = getAvailableMonthsForProductivity(selectedYear);
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             const now = new Date();
             
             if (availableMonths.length === 0) { 
-                monthDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+                monthDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin sesiones registradas</div>'; 
             } else {
                 prodQlikFilters.month = [];
                 availableMonths.forEach(monthNum => {
@@ -1845,9 +1900,10 @@
             if (prodQlikFilters.year.length === 1 && prodQlikFilters.month.length === 1) {
                 const year = prodQlikFilters.year[0];
                 const month = prodQlikFilters.month[0];
-                const availableDays = getAvailableDays(year, month);
+                // Usar función específica para productividad que busca por sesiones
+                const availableDays = getAvailableDaysForProductivity(year, month);
                 if (availableDays.length === 0) { 
-                    dayDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+                    dayDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin sesiones registradas</div>'; 
                 } else {
                     availableDays.forEach(day => {
                         const div = document.createElement('div');
