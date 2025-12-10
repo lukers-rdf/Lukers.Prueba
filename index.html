@@ -727,7 +727,7 @@
                                 <div class="stat-icon primary"><i class="fas fa-tasks"></i></div>
                             </div>
                             <div class="stat-value" id="statTotal">0</div>
-                            <div class="stat-change up"><i class="fas fa-arrow-up"></i> 12% vs anterior</div>
+                            <div class="stat-change" id="statTotalChange"><i class="fas fa-minus"></i> --</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
@@ -735,7 +735,7 @@
                                 <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
                             </div>
                             <div class="stat-value" id="statCompleted">0</div>
-                            <div class="stat-change up"><i class="fas fa-arrow-up"></i> 8% vs anterior</div>
+                            <div class="stat-change" id="statCompletedChange"><i class="fas fa-minus"></i> --</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
@@ -743,7 +743,7 @@
                                 <div class="stat-icon warning"><i class="fas fa-spinner"></i></div>
                             </div>
                             <div class="stat-value" id="statProgress">0</div>
-                            <div class="stat-change"><i class="fas fa-minus"></i> Sin cambio</div>
+                            <div class="stat-change" id="statProgressChange"><i class="fas fa-minus"></i> --</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
@@ -751,7 +751,7 @@
                                 <div class="stat-icon purple"><i class="fas fa-percentage"></i></div>
                             </div>
                             <div class="stat-value" id="statEfficiency">0%</div>
-                            <div class="stat-change up"><i class="fas fa-arrow-up"></i> 5% vs anterior</div>
+                            <div class="stat-change" id="statEfficiencyChange"><i class="fas fa-minus"></i> --</div>
                         </div>
                     </div>
 
@@ -1995,6 +1995,89 @@
             document.getElementById('statCompleted').textContent = completed;
             document.getElementById('statProgress').textContent = inProgress;
             document.getElementById('statEfficiency').textContent = efficiency + '%';
+            
+            // Calcular período anterior para comparación
+            let prevFiltered = [];
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                // Si hay días seleccionados, comparar con los mismos días del mes anterior
+                const prevMonth = selectedMonths[0] === 0 ? 11 : selectedMonths[0] - 1;
+                const prevYear = selectedMonths[0] === 0 ? year - 1 : year;
+                prevFiltered = cachedTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === prevYear && taskDate.getMonth() === prevMonth && selectedDays.includes(taskDate.getDate().toString()); 
+                });
+            } else if (selectedMonths.length === 1) {
+                // Un mes seleccionado, comparar con mes anterior
+                const prevMonth = selectedMonths[0] === 0 ? 11 : selectedMonths[0] - 1;
+                const prevYear = selectedMonths[0] === 0 ? year - 1 : year;
+                prevFiltered = cachedTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === prevYear && taskDate.getMonth() === prevMonth; 
+                });
+            } else if (selectedMonths.length > 1) {
+                // Múltiples meses, comparar con los mismos meses del año anterior
+                prevFiltered = cachedTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === year - 1 && selectedMonths.includes(taskDate.getMonth()); 
+                });
+            } else {
+                // Año completo, comparar con año anterior
+                prevFiltered = cachedTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === year - 1; 
+                });
+            }
+            
+            const prevTotal = prevFiltered.length;
+            const prevCompleted = prevFiltered.filter(t => t.status === 'completada').length;
+            const prevInProgress = prevFiltered.filter(t => t.status === 'en_progreso').length;
+            const prevEfficiency = prevTotal > 0 ? Math.round((prevCompleted / prevTotal) * 100) : 0;
+            
+            // Función para calcular y mostrar el cambio
+            const updateChangeDisplay = (elementId, current, previous, isPercentage = false) => {
+                const element = document.getElementById(elementId);
+                if (!element) return;
+                
+                let changePercent, changeText, changeClass, icon;
+                
+                if (previous === 0 && current === 0) {
+                    changeText = 'Sin datos previos';
+                    changeClass = '';
+                    icon = 'fas fa-minus';
+                } else if (previous === 0) {
+                    changeText = 'Nuevo';
+                    changeClass = 'up';
+                    icon = 'fas fa-arrow-up';
+                } else {
+                    if (isPercentage) {
+                        changePercent = current - previous; // Diferencia directa para porcentajes
+                    } else {
+                        changePercent = ((current - previous) / previous) * 100;
+                    }
+                    
+                    if (changePercent > 0) {
+                        changeText = `+${Math.abs(changePercent).toFixed(0)}% vs anterior`;
+                        changeClass = 'up';
+                        icon = 'fas fa-arrow-up';
+                    } else if (changePercent < 0) {
+                        changeText = `-${Math.abs(changePercent).toFixed(0)}% vs anterior`;
+                        changeClass = 'down';
+                        icon = 'fas fa-arrow-down';
+                    } else {
+                        changeText = 'Sin cambio';
+                        changeClass = '';
+                        icon = 'fas fa-minus';
+                    }
+                }
+                
+                element.className = `stat-change ${changeClass}`;
+                element.innerHTML = `<i class="${icon}"></i> ${changeText}`;
+            };
+            
+            updateChangeDisplay('statTotalChange', total, prevTotal);
+            updateChangeDisplay('statCompletedChange', completed, prevCompleted);
+            updateChangeDisplay('statProgressChange', inProgress, prevInProgress);
+            updateChangeDisplay('statEfficiencyChange', efficiency, prevEfficiency, true);
 
             const chartColors = { accent: '#6366f1', success: '#10b981', warning: '#f59e0b', danger: '#ef4444', info: '#3b82f6', purple: '#a855f7', cyan: '#06b6d4', text: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim(), border: getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim() };
             Chart.defaults.color = chartColors.text;
