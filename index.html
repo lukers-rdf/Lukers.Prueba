@@ -2150,7 +2150,7 @@
                 selectedDays.forEach(day => {
                     const date = new Date(year, selectedMonths[0], day);
                     const dayOfWeek = date.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isFeriado(date)) workingDays++;
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isFeriado(year, selectedMonths[0], day)) workingDays++;
                 });
             } else if (selectedMonths.length > 0) {
                 selectedMonths.forEach(m => { workingDays += getWorkingDaysInMonth(year, m); });
