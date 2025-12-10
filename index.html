@@ -845,39 +845,53 @@
                             <div class="qlik-filter-dropdown" id="prodDayDropdown"></div>
                         </div>
                     </div>
+                    
+                    <!-- Tarjetas de métricas globales -->
+                    <div class="stats-grid" id="productivityStats" style="margin-bottom: var(--space-6);"></div>
+                    
                     <div class="info-box" style="margin-bottom: var(--space-6);">
                         <i class="fas fa-info-circle"></i>
-                        <p><strong>Nota:</strong> La productividad se calcula basándose en días laborables (Lunes a Viernes, excluyendo feriados del sector privado en Perú) con jornada de 9.5 horas diarias (8:30 AM - 7:00 PM, con 1 hora de almuerzo).</p>
+                        <p><strong>Métricas:</strong> 
+                            <b>Eficacia</b> = Completadas/Asignadas | 
+                            <b>Eficiencia</b> = T.Estimado/T.Real | 
+                            <b>Productividad</b> = Completadas/Horas | 
+                            <b>Utilización</b> = T.Trabajado/T.Disponible
+                        </p>
                     </div>
+                    
                     <div class="chart-card" style="margin-bottom: var(--space-6);">
                         <div class="chart-header">
                             <div class="chart-icon"><i class="fas fa-chart-bar"></i></div>
-                            <span class="chart-title">Productividad por Trabajador</span>
+                            <span class="chart-title">Métricas por Trabajador</span>
                         </div>
                         <div class="chart-container" style="height: 400px;"><canvas id="productivityUserChart"></canvas></div>
                         <div style="display:flex;justify-content:center;gap:var(--space-6);margin-top:var(--space-4);flex-wrap:wrap">
                             <div style="display:flex;align-items:center;gap:var(--space-2)">
-                                <div style="width:16px;height:16px;background:var(--success);border-radius:4px"></div>
-                                <span style="font-size:0.8125rem;color:var(--text-secondary)">≥80% Excelente</span>
+                                <div style="width:16px;height:16px;background:#6366f1;border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">Eficacia</span>
                             </div>
                             <div style="display:flex;align-items:center;gap:var(--space-2)">
-                                <div style="width:16px;height:16px;background:var(--warning);border-radius:4px"></div>
-                                <span style="font-size:0.8125rem;color:var(--text-secondary)">50-79% Bueno</span>
+                                <div style="width:16px;height:16px;background:#10b981;border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">Eficiencia</span>
                             </div>
                             <div style="display:flex;align-items:center;gap:var(--space-2)">
-                                <div style="width:16px;height:16px;background:var(--danger);border-radius:4px"></div>
-                                <span style="font-size:0.8125rem;color:var(--text-secondary)">&lt;50% Bajo</span>
+                                <div style="width:16px;height:16px;background:#f59e0b;border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">Productividad (×10)</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:var(--space-2)">
+                                <div style="width:16px;height:16px;background:#3b82f6;border-radius:4px"></div>
+                                <span style="font-size:0.8125rem;color:var(--text-secondary)">Utilización</span>
                             </div>
                         </div>
                     </div>
                     <div class="table-card">
                         <div class="table-header">
                             <i class="fas fa-table" style="color: var(--success); font-size: 1.25rem;"></i>
-                            <span class="table-title">Detalle de Productividad por Trabajador</span>
+                            <span class="table-title">Detalle de Métricas por Trabajador</span>
                         </div>
                         <div class="table-container">
                             <table>
-                                <thead><tr><th>Trabajador</th><th>Días Laborales</th><th>Horas Disponibles</th><th>Horas Trabajadas</th><th>Productividad</th><th>Tareas Completadas</th></tr></thead>
+                                <thead><tr><th>Trabajador</th><th>Asignadas</th><th>Completadas</th><th>Eficacia</th><th>Eficiencia</th><th>Productividad</th><th>Utilización</th></tr></thead>
                                 <tbody id="productivityTable"></tbody>
                             </table>
                         </div>
@@ -889,7 +903,7 @@
                         </div>
                         <div class="table-container">
                             <table>
-                                <thead><tr><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Prioridad</th><th>Tiempo</th><th>% Jornada</th></tr></thead>
+                                <thead><tr><th>Título</th><th>Estado</th><th>Asignado</th><th>T.Estimado</th><th>T.Real</th><th>Eficiencia</th></tr></thead>
                                 <tbody id="productivityCompletedTable"></tbody>
                             </table>
                         </div>
@@ -967,6 +981,14 @@
                 <div class="form-group">
                     <label class="form-label">Fecha de Término</label>
                     <input type="date" id="taskEndDate" class="form-input" min="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tiempo Estimado</label>
+                    <div style="display:flex;gap:var(--space-2)">
+                        <input type="number" id="taskEstimatedHours" class="form-input" placeholder="Horas" min="0" max="999" style="flex:1">
+                        <input type="number" id="taskEstimatedMinutes" class="form-input" placeholder="Minutos" min="0" max="59" style="flex:1">
+                    </div>
+                    <small style="color:var(--text-muted);font-size:0.75rem;margin-top:var(--space-1);display:block">Tiempo que estimas para completar esta tarea</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Hora de Término (opcional)</label>
@@ -1441,6 +1463,11 @@
             const endMinute = document.getElementById('taskEndMinute').value;
             const endPeriod = document.getElementById('taskEndPeriod').value;
             
+            // Obtener tiempo estimado
+            const estimatedHours = parseInt(document.getElementById('taskEstimatedHours').value) || 0;
+            const estimatedMinutes = parseInt(document.getElementById('taskEstimatedMinutes').value) || 0;
+            const estimatedTotalMinutes = (estimatedHours * 60) + estimatedMinutes;
+            
             // Validar fecha de término
             if (endDate) {
                 const [year, month, day] = endDate.split('-').map(Number);
@@ -1472,6 +1499,7 @@
             try {
                 const taskData = { title, description: document.getElementById('taskDescription').value.trim(), task_type: selectedTaskType, priority: selectedPriority, assigned_to: assignee, created_by: currentUser.id, status: 'pendiente' };
                 if (endDate) taskData.end_date = endDate;
+                if (estimatedTotalMinutes > 0) taskData.estimated_minutes = estimatedTotalMinutes;
                 if (endHour && endMinute) {
                     let hour24 = parseInt(endHour);
                     if (endPeriod === 'PM' && hour24 !== 12) hour24 += 12;
@@ -1482,6 +1510,9 @@
                 if (error) throw error;
                 cachedTasks.unshift(data); renderTasks();
                 ocultarLoading(); closeModal('newTaskModal'); showToast('Tarea creada correctamente', 'success');
+                // Limpiar campos de tiempo estimado
+                document.getElementById('taskEstimatedHours').value = '';
+                document.getElementById('taskEstimatedMinutes').value = '';
             } catch (error) { ocultarLoading(); showToast('Error: ' + error.message, 'error'); }
         }
 
@@ -2131,17 +2162,15 @@
             const selectedDays = prodQlikFilters.day.length > 0 ? prodQlikFilters.day.map(d => parseInt(d)) : [];
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             
-            console.log('renderProductivity - Filtros:', { year, selectedMonths, selectedDays });
-            
             // Construir subtítulo
-            let subtitle = 'Productividad';
+            let subtitle = 'Métricas de Rendimiento';
             if (selectedDays.length > 0 && selectedMonths.length === 1) {
-                if (selectedDays.length === 1) subtitle = `Productividad del ${selectedDays[0]} de ${monthNames[selectedMonths[0]]} ${year}`;
-                else subtitle = `Productividad de ${selectedDays.length} días en ${monthNames[selectedMonths[0]]} ${year}`;
+                if (selectedDays.length === 1) subtitle = `Métricas del ${selectedDays[0]} de ${monthNames[selectedMonths[0]]} ${year}`;
+                else subtitle = `Métricas de ${selectedDays.length} días en ${monthNames[selectedMonths[0]]} ${year}`;
             } else if (selectedMonths.length > 0) {
-                if (selectedMonths.length === 1) subtitle = `Productividad de ${monthNames[selectedMonths[0]]} ${year}`;
-                else subtitle = `Productividad de ${selectedMonths.length} meses en ${year}`;
-            } else { subtitle = `Productividad de ${year}`; }
+                if (selectedMonths.length === 1) subtitle = `Métricas de ${monthNames[selectedMonths[0]]} ${year}`;
+                else subtitle = `Métricas de ${selectedMonths.length} meses en ${year}`;
+            } else { subtitle = `Métricas de ${year}`; }
             document.getElementById('headerSubtitle').textContent = subtitle;
             
             // Calcular días laborables según filtros
@@ -2157,14 +2186,10 @@
             } else {
                 for (let m = 0; m < 12; m++) workingDays += getWorkingDaysInMonth(year, m);
             }
-            if (workingDays === 0) workingDays = 1; // Evitar división por cero
+            if (workingDays === 0) workingDays = 1;
             
-            const workdayMinutes = 570;
+            const workdayMinutes = 570; // 9.5 horas
             const totalAvailableMinutes = workingDays * workdayMinutes;
-            const totalAvailableHours = workingDays * 9.5;
-            const availableHours = Math.floor(totalAvailableHours);
-            const availableMins = Math.round((totalAvailableHours % 1) * 60);
-            const availableHoursDisplay = availableMins > 0 ? `${availableHours}h ${availableMins}m` : `${availableHours}h`;
             
             // Función para verificar si una sesión coincide con los filtros
             const sessionMatchesFilter = (session) => {
@@ -2176,142 +2201,230 @@
                 return true;
             };
             
-            // Calcular productividad por trabajador
+            // Calcular métricas por trabajador
             const trabajadores = cachedProfiles.filter(p => p.role === 'trabajador');
-            const productivityData = trabajadores.map(worker => {
-                let workedMinutes = 0;
-                let tasksInPeriod = 0;
-                
-                // Obtener todas las tareas del trabajador
+            const metricsData = trabajadores.map(worker => {
                 const workerTasks = cachedTasks.filter(t => t.assigned_to === worker.id);
+                
+                let totalAssigned = 0;
+                let totalCompleted = 0;
+                let totalWorkedMinutes = 0;
+                let totalEstimatedMinutes = 0;
+                let totalRealMinutesForEfficiency = 0;
+                let tasksWithEstimate = 0;
                 
                 workerTasks.forEach(task => {
                     const sessions = (task.task_sessions || []).filter(s => !s.is_active && s.duration_minutes > 0);
-                    let taskHasMatchingSessions = false;
+                    const matchingSessions = sessions.filter(s => sessionMatchesFilter(s));
+                    const taskWorkedMinutes = matchingSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
                     
-                    sessions.forEach(s => {
-                        if (sessionMatchesFilter(s)) {
-                            workedMinutes += s.duration_minutes || 0;
-                            taskHasMatchingSessions = true;
+                    // Si la tarea tiene sesiones en el período, contarla
+                    if (matchingSessions.length > 0) {
+                        totalAssigned++;
+                        totalWorkedMinutes += taskWorkedMinutes;
+                        
+                        if (task.status === 'completada') {
+                            totalCompleted++;
                         }
-                    });
-                    
-                    if (taskHasMatchingSessions) tasksInPeriod++;
+                        
+                        // Para eficiencia: solo tareas completadas con tiempo estimado
+                        if (task.status === 'completada' && task.estimated_minutes > 0) {
+                            totalEstimatedMinutes += task.estimated_minutes;
+                            // Tiempo real = suma de TODAS las sesiones de la tarea (no solo las del período)
+                            const allTaskMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+                            totalRealMinutesForEfficiency += allTaskMinutes;
+                            tasksWithEstimate++;
+                        }
+                    }
                 });
                 
-                const workedHours = Math.floor(workedMinutes / 60);
-                const workedMins = workedMinutes % 60;
-                let workedDisplay = '0h';
-                if (workedMinutes > 0) {
-                    if (workedHours > 0 && workedMins > 0) workedDisplay = `${workedHours}h ${workedMins}m`;
-                    else if (workedHours > 0) workedDisplay = `${workedHours}h`;
-                    else workedDisplay = `${workedMins}m`;
-                }
+                // Calcular las 4 métricas
+                // 1. EFICACIA = Completadas / Asignadas × 100
+                const eficacia = totalAssigned > 0 ? (totalCompleted / totalAssigned) * 100 : 0;
                 
-                const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100) : 0;
+                // 2. EFICIENCIA = Tiempo Estimado / Tiempo Real × 100
+                const eficiencia = totalRealMinutesForEfficiency > 0 ? (totalEstimatedMinutes / totalRealMinutesForEfficiency) * 100 : 0;
                 
-                return { 
-                    name: worker.full_name || 'Usuario', 
-                    workedMinutes, 
-                    workedDisplay, 
-                    productivity: parseFloat(productivity.toFixed(1)), 
-                    tasksInPeriod 
+                // 3. PRODUCTIVIDAD = Tareas Completadas / Horas Trabajadas
+                const horasTrabajadas = totalWorkedMinutes / 60;
+                const productividad = horasTrabajadas > 0 ? totalCompleted / horasTrabajadas : 0;
+                
+                // 4. UTILIZACIÓN = Tiempo Trabajado / Tiempo Disponible × 100
+                const utilizacion = totalAvailableMinutes > 0 ? (totalWorkedMinutes / totalAvailableMinutes) * 100 : 0;
+                
+                return {
+                    name: worker.full_name || 'Usuario',
+                    totalAssigned,
+                    totalCompleted,
+                    totalWorkedMinutes,
+                    horasTrabajadas: horasTrabajadas.toFixed(1),
+                    eficacia: parseFloat(eficacia.toFixed(1)),
+                    eficiencia: parseFloat(eficiencia.toFixed(1)),
+                    productividad: parseFloat(productividad.toFixed(2)),
+                    utilizacion: parseFloat(utilizacion.toFixed(1)),
+                    tasksWithEstimate
                 };
             });
-            productivityData.sort((a, b) => b.productivity - a.productivity);
+            metricsData.sort((a, b) => b.eficacia - a.eficacia);
             
-            console.log('productivityData:', productivityData);
+            // Calcular promedios globales
+            const totalWorkers = metricsData.length || 1;
+            const avgEficacia = metricsData.reduce((s, d) => s + d.eficacia, 0) / totalWorkers;
+            const avgEficiencia = metricsData.filter(d => d.tasksWithEstimate > 0).reduce((s, d) => s + d.eficiencia, 0) / (metricsData.filter(d => d.tasksWithEstimate > 0).length || 1);
+            const avgProductividad = metricsData.reduce((s, d) => s + d.productividad, 0) / totalWorkers;
+            const avgUtilizacion = metricsData.reduce((s, d) => s + d.utilizacion, 0) / totalWorkers;
+            const totalCompletadas = metricsData.reduce((s, d) => s + d.totalCompleted, 0);
+            const totalAsignadas = metricsData.reduce((s, d) => s + d.totalAssigned, 0);
             
-            // Renderizar gráfica
+            // Renderizar tarjetas de métricas globales
+            const getBadgeClass = (value, thresholds) => {
+                if (value >= thresholds.good) return 'success';
+                if (value >= thresholds.medium) return 'warning';
+                return 'danger';
+            };
+            
+            document.getElementById('productivityStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Eficacia Promedio</span>
+                        <div class="stat-icon ${getBadgeClass(avgEficacia, {good: 80, medium: 50})}"><i class="fas fa-bullseye"></i></div>
+                    </div>
+                    <div class="stat-value">${avgEficacia.toFixed(1)}%</div>
+                    <div class="stat-change"><i class="fas fa-check-circle"></i> ${totalCompletadas}/${totalAsignadas} tareas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Eficiencia Promedio</span>
+                        <div class="stat-icon ${getBadgeClass(avgEficiencia, {good: 100, medium: 70})}"><i class="fas fa-clock"></i></div>
+                    </div>
+                    <div class="stat-value">${avgEficiencia.toFixed(1)}%</div>
+                    <div class="stat-change"><i class="fas fa-info-circle"></i> T.Estimado vs T.Real</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Productividad Promedio</span>
+                        <div class="stat-icon warning"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                    <div class="stat-value">${avgProductividad.toFixed(2)}</div>
+                    <div class="stat-change"><i class="fas fa-tasks"></i> tareas/hora</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Utilización Promedio</span>
+                        <div class="stat-icon ${getBadgeClass(avgUtilizacion, {good: 80, medium: 50})}"><i class="fas fa-user-clock"></i></div>
+                    </div>
+                    <div class="stat-value">${avgUtilizacion.toFixed(1)}%</div>
+                    <div class="stat-change"><i class="fas fa-calendar-alt"></i> ${workingDays} días laborables</div>
+                </div>
+            `;
+            
+            // Renderizar gráfica con las 4 métricas
             const chartColors = { 
-                accent: '#6366f1', 
-                success: '#10b981', 
-                warning: '#f59e0b', 
-                danger: '#ef4444', 
-                info: '#3b82f6', 
-                text: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim(), 
+                eficacia: '#6366f1', 
+                eficiencia: '#10b981', 
+                productividad: '#f59e0b', 
+                utilizacion: '#3b82f6',
                 border: getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim() 
             };
             
             if (charts.productivityUsers) charts.productivityUsers.destroy();
-            const barColors = productivityData.map(d => { 
-                if (d.productivity >= 80) return chartColors.success; 
-                if (d.productivity >= 50) return chartColors.warning; 
-                return chartColors.danger; 
-            });
             
             charts.productivityUsers = new Chart(document.getElementById('productivityUserChart'), { 
                 type: 'bar', 
                 data: { 
-                    labels: productivityData.map(d => d.name), 
-                    datasets: [{ 
-                        label: 'Productividad (%)', 
-                        data: productivityData.map(d => d.productivity), 
-                        backgroundColor: barColors, 
-                        borderRadius: 12, 
-                        borderSkipped: false 
-                    }] 
+                    labels: metricsData.map(d => d.name), 
+                    datasets: [
+                        { label: 'Eficacia (%)', data: metricsData.map(d => d.eficacia), backgroundColor: chartColors.eficacia, borderRadius: 4 },
+                        { label: 'Eficiencia (%)', data: metricsData.map(d => d.eficiencia), backgroundColor: chartColors.eficiencia, borderRadius: 4 },
+                        { label: 'Productividad (×10)', data: metricsData.map(d => d.productividad * 10), backgroundColor: chartColors.productividad, borderRadius: 4 },
+                        { label: 'Utilización (%)', data: metricsData.map(d => d.utilizacion), backgroundColor: chartColors.utilizacion, borderRadius: 4 }
+                    ]
                 }, 
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
-                        legend: { display: false }, 
-                        tooltip: { callbacks: { label: (ctx) => `Productividad: ${ctx.parsed.y.toFixed(1)}%` } } 
+                        legend: { display: false },
+                        tooltip: { 
+                            callbacks: { 
+                                label: (ctx) => {
+                                    if (ctx.dataset.label.includes('Productividad')) {
+                                        return `Productividad: ${(ctx.parsed.y / 10).toFixed(2)} tareas/hora`;
+                                    }
+                                    return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`;
+                                }
+                            } 
+                        } 
                     }, 
                     scales: { 
                         x: { grid: { display: false } }, 
-                        y: { grid: { color: chartColors.border }, beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } } 
+                        y: { grid: { color: chartColors.border }, beginAtZero: true, max: 150 } 
                     } 
                 } 
             });
             
-            // Renderizar tabla de productividad por trabajador
-            document.getElementById('productivityTable').innerHTML = productivityData.length > 0 
-                ? productivityData.map(d => { 
-                    const badge = d.productivity >= 80 ? 'success' : d.productivity >= 50 ? 'warning' : 'danger'; 
+            // Renderizar tabla de métricas por trabajador
+            document.getElementById('productivityTable').innerHTML = metricsData.length > 0 
+                ? metricsData.map(d => {
+                    const eficaciaBadge = d.eficacia >= 80 ? 'success' : d.eficacia >= 50 ? 'warning' : 'danger';
+                    const eficienciaBadge = d.eficiencia >= 100 ? 'success' : d.eficiencia >= 70 ? 'warning' : 'danger';
+                    const utilizacionBadge = d.utilizacion >= 80 ? 'success' : d.utilizacion >= 50 ? 'warning' : 'danger';
                     return `<tr>
                         <td style="font-weight:600">${d.name}</td>
-                        <td>${workingDays} días</td>
-                        <td style="font-family:var(--font-mono);font-weight:500">${availableHoursDisplay}</td>
-                        <td style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">${d.workedDisplay}</td>
-                        <td><span class="badge badge-${badge}" style="font-size:0.8125rem">${d.productivity}%</span></td>
-                        <td><span class="badge badge-info">${d.tasksInPeriod} tareas</span></td>
-                    </tr>`; 
+                        <td style="text-align:center">${d.totalAssigned}</td>
+                        <td style="text-align:center">${d.totalCompleted}</td>
+                        <td><span class="badge badge-${eficaciaBadge}">${d.eficacia}%</span></td>
+                        <td><span class="badge badge-${eficienciaBadge}">${d.eficiencia > 0 ? d.eficiencia + '%' : 'N/A'}</span></td>
+                        <td style="font-family:var(--font-mono);font-weight:600;text-align:center">${d.productividad} t/h</td>
+                        <td><span class="badge badge-${utilizacionBadge}">${d.utilizacion}%</span></td>
+                    </tr>`;
                 }).join('') 
-                : '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
+                : '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
             
-            // Renderizar tabla de TODAS las tareas (no solo completadas) que tienen sesiones en el período
+            // Función para verificar si una fecha coincide con los filtros
+            const dateMatchesFilter = (dateStr) => {
+                if (!dateStr) return false;
+                const d = new Date(dateStr);
+                if (d.getFullYear() !== year) return false;
+                if (selectedMonths.length > 0 && !selectedMonths.includes(d.getMonth())) return false;
+                if (selectedDays.length > 0 && !selectedDays.includes(d.getDate())) return false;
+                return true;
+            };
+            
+            // Renderizar tabla de tareas con actividad en el período
+            // Incluye: tareas con sesiones en el período O tareas creadas en el período
             const allTasksInPeriod = cachedTasks.filter(task => {
                 const sessions = (task.task_sessions || []).filter(s => !s.is_active);
-                return sessions.some(s => sessionMatchesFilter(s));
+                const hasSessionInPeriod = sessions.some(s => sessionMatchesFilter(s));
+                const createdInPeriod = dateMatchesFilter(task.created_at);
+                return hasSessionInPeriod || createdInPeriod;
             }).sort((a, b) => {
+                // Ordenar por última actividad (sesión o creación)
                 const aLast = (a.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s)).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
                 const bLast = (b.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s)).sort((x, y) => new Date(y.start_time) - new Date(x.start_time))[0];
-                const aDate = aLast ? new Date(aLast.start_time) : new Date(0);
-                const bDate = bLast ? new Date(bLast.start_time) : new Date(0);
+                const aDate = aLast ? new Date(aLast.start_time) : new Date(a.created_at);
+                const bDate = bLast ? new Date(bLast.start_time) : new Date(b.created_at);
                 return bDate - aDate;
-            }).slice(0, 15);
-            
-            console.log('allTasksInPeriod:', allTasksInPeriod.length);
+            }).slice(0, 20);
             
             document.getElementById('productivityCompletedTable').innerHTML = allTasksInPeriod.length > 0 
                 ? allTasksInPeriod.map(t => { 
-                    const sessions = (t.task_sessions || []).filter(s => !s.is_active && sessionMatchesFilter(s));
-                    const totalMins = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0); 
-                    const workdayCalc = calculateWorkdayPercentage(totalMins);
+                    const sessions = (t.task_sessions || []).filter(s => !s.is_active);
+                    const totalMins = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+                    const estimated = t.estimated_minutes || 0;
+                    const taskEfficiency = (estimated > 0 && totalMins > 0) ? ((estimated / totalMins) * 100).toFixed(1) : null;
+                    const effBadge = taskEfficiency ? (taskEfficiency >= 100 ? 'success' : taskEfficiency >= 70 ? 'warning' : 'danger') : 'muted';
                     const statusClass = t.status === 'completada' ? 'success' : t.status === 'en_progreso' ? 'info' : t.status === 'pausada' ? 'warning' : 'muted';
                     return `<tr>
                         <td style="font-weight:600">${t.title}</td>
-                        <td>${formatTaskType(t.task_type)}</td>
                         <td><span class="badge badge-${statusClass}">${formatStatus(t.status)}</span></td>
                         <td>${t.assigned_profile?.full_name || 'N/A'}</td>
-                        <td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td>
+                        <td style="font-family:var(--font-mono)">${estimated > 0 ? formatDuration(estimated) : '-'}</td>
                         <td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td>
-                        <td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td>
+                        <td><span class="badge badge-${effBadge}">${taskEfficiency ? taskEfficiency + '%' : 'Sin estimado'}</span></td>
                     </tr>`; 
                 }).join('') 
-                : '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas con sesiones en este período</td></tr>';
+                : '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas con sesiones en este período</td></tr>';
         }
 
         // ============================================
