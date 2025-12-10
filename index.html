@@ -773,7 +773,7 @@
                         </div>
                     </div>
 
-                    <div class="charts-grid">
+                    <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
                         <div class="chart-card">
                             <div class="chart-header">
                                 <div class="chart-icon"><i class="fas fa-chart-bar"></i></div>
@@ -781,29 +781,12 @@
                             </div>
                             <div class="chart-container"><canvas id="statusChart"></canvas></div>
                         </div>
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <div class="chart-icon"><i class="fas fa-chart-pie"></i></div>
-                                <span class="chart-title">Distribución por Tipo</span>
-                            </div>
-                            <div class="chart-container"><canvas id="typeChart"></canvas></div>
-                        </div>
-                    </div>
-
-                    <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
                         <div class="chart-card" id="trendChartCard">
                             <div class="chart-header">
                                 <div class="chart-icon"><i class="fas fa-chart-line"></i></div>
-                                <span class="chart-title">Tendencia Semanal</span>
+                                <span class="chart-title">Tendencia y Productividad</span>
                             </div>
                             <div class="chart-container"><canvas id="trendChart"></canvas></div>
-                        </div>
-                        <div class="chart-card" id="productivityChartCard">
-                            <div class="chart-header">
-                                <div class="chart-icon"><i class="fas fa-chart-area"></i></div>
-                                <span class="chart-title">Productividad por Día</span>
-                            </div>
-                            <div class="chart-container"><canvas id="productivityDayChart"></canvas></div>
                         </div>
                     </div>
 
@@ -827,19 +810,39 @@
 
                 <!-- Productivity View -->
                 <div class="view" id="productivityView">
-                    <div class="filters-bar">
-                        <div class="filter-group">
-                            <span class="filter-label">Año:</span>
-                            <select class="filter-select" id="productivityYear" onchange="renderProductivity()"></select>
+                    <div class="qlik-filters-container" id="productivityFilters">
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikDropdown('prodYearDropdown')">
+                                <span class="qlik-filter-title">Año</span>
+                                <span class="qlik-filter-selected" id="prodYearDisplay">Todos</span>
+                                <i class="fas fa-chevron-down qlik-filter-icon"></i>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearProdQlikFilter('year')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-dropdown" id="prodYearDropdown"></div>
                         </div>
-                        <div class="filter-group">
-                            <span class="filter-label">Mes:</span>
-                            <select class="filter-select" id="productivityMonth" onchange="renderProductivity()">
-                                <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
-                                <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
-                                <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
-                                <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
-                            </select>
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikDropdown('prodMonthDropdown')">
+                                <span class="qlik-filter-title">Mes</span>
+                                <span class="qlik-filter-selected" id="prodMonthDisplay">Todos</span>
+                                <i class="fas fa-chevron-down qlik-filter-icon"></i>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearProdQlikFilter('month')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-dropdown" id="prodMonthDropdown"></div>
+                        </div>
+                        <div class="qlik-filter">
+                            <div class="qlik-filter-header" onclick="toggleQlikDropdown('prodDayDropdown')">
+                                <span class="qlik-filter-title">Día</span>
+                                <span class="qlik-filter-selected" id="prodDayDisplay">Todos</span>
+                                <i class="fas fa-chevron-down qlik-filter-icon"></i>
+                                <div class="qlik-filter-actions">
+                                    <button class="qlik-filter-btn" onclick="event.stopPropagation(); clearProdQlikFilter('day')" title="Limpiar"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="qlik-filter-dropdown" id="prodDayDropdown"></div>
                         </div>
                     </div>
                     <div class="info-box" style="margin-bottom: var(--space-6);">
@@ -963,7 +966,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Fecha de Término</label>
-                    <input type="date" id="taskEndDate" class="form-input">
+                    <input type="date" id="taskEndDate" class="form-input" min="">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Hora de Término (opcional)</label>
@@ -1393,7 +1396,12 @@
             populateAssignees();
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDescription').value = '';
-            document.getElementById('taskEndDate').value = '';
+            // Establecer fecha mínima como hoy
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const endDateInput = document.getElementById('taskEndDate');
+            endDateInput.value = '';
+            endDateInput.min = todayStr;
             document.getElementById('taskEndHour').value = '';
             document.getElementById('taskEndMinute').value = '';
             document.getElementById('taskEndPeriod').value = 'PM';
@@ -1415,13 +1423,34 @@
             const endHour = document.getElementById('taskEndHour').value;
             const endMinute = document.getElementById('taskEndMinute').value;
             const endPeriod = document.getElementById('taskEndPeriod').value;
-            if (endDate && endHour && endMinute) {
-                let hour24 = parseInt(endHour);
-                if (endPeriod === 'PM' && hour24 !== 12) hour24 += 12;
-                if (endPeriod === 'AM' && hour24 === 12) hour24 = 0;
-                const endDateTime = new Date(endDate); endDateTime.setHours(hour24, parseInt(endMinute), 0, 0);
-                if (endDateTime < new Date()) { showToast('La fecha y hora de término no puede estar en el pasado', 'error'); return; }
+            
+            // Validar fecha de término
+            if (endDate) {
+                const [year, month, day] = endDate.split('-').map(Number);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const selectedDate = new Date(year, month - 1, day);
+                selectedDate.setHours(0, 0, 0, 0);
+                
+                if (selectedDate < today) { 
+                    showToast('La fecha de término no puede estar en el pasado', 'error'); 
+                    return; 
+                }
+                
+                // Si es hoy y tiene hora, validar que la hora no haya pasado
+                if (endHour && endMinute && selectedDate.getTime() === today.getTime()) {
+                    let hour24 = parseInt(endHour);
+                    if (endPeriod === 'PM' && hour24 !== 12) hour24 += 12;
+                    if (endPeriod === 'AM' && hour24 === 12) hour24 = 0;
+                    const now = new Date();
+                    const endDateTime = new Date(year, month - 1, day, hour24, parseInt(endMinute), 0, 0);
+                    if (endDateTime < now) { 
+                        showToast('La hora de término no puede estar en el pasado', 'error'); 
+                        return; 
+                    }
+                }
             }
+            
             mostrarLoading('Creando', 'Guardando tarea...');
             try {
                 const taskData = { title, description: document.getElementById('taskDescription').value.trim(), task_type: selectedTaskType, priority: selectedPriority, assigned_to: assignee, created_by: currentUser.id, status: 'pendiente' };
@@ -1508,19 +1537,22 @@
         }
 
         // ============================================
-        // QLIK FILTERS
+        // QLIK FILTERS - ANALYTICS
         // ============================================
         let qlikFilters = { year: [], month: [], day: [] };
+        let prodQlikFilters = { year: [], month: [], day: [] };
 
         function toggleQlikDropdown(dropdownId) {
             const dropdown = document.getElementById(dropdownId);
+            if (!dropdown) return;
             const allDropdowns = document.querySelectorAll('.qlik-filter-dropdown');
             const header = dropdown.previousElementSibling;
-            allDropdowns.forEach(d => { if (d.id !== dropdownId) { d.classList.remove('open'); d.previousElementSibling.classList.remove('open'); } });
-            dropdown.classList.toggle('open'); header.classList.toggle('open');
+            allDropdowns.forEach(d => { if (d.id !== dropdownId) { d.classList.remove('open'); if (d.previousElementSibling) d.previousElementSibling.classList.remove('open'); } });
+            dropdown.classList.toggle('open'); 
+            if (header) header.classList.toggle('open');
         }
 
-        document.addEventListener('click', function(e) { if (!e.target.closest('.qlik-filter')) { document.querySelectorAll('.qlik-filter-dropdown').forEach(d => { d.classList.remove('open'); d.previousElementSibling.classList.remove('open'); }); } });
+        document.addEventListener('click', function(e) { if (!e.target.closest('.qlik-filter')) { document.querySelectorAll('.qlik-filter-dropdown').forEach(d => { d.classList.remove('open'); if (d.previousElementSibling) d.previousElementSibling.classList.remove('open'); }); } });
 
         function toggleQlikOption(element, filterType) {
             const value = element.dataset.value;
@@ -1544,87 +1576,271 @@
         function updateQlikDisplay(filterType) {
             const displayId = filterType === 'year' ? 'yearDisplay' : filterType === 'month' ? 'monthDisplay' : 'dayDisplay';
             const display = document.getElementById(displayId);
+            if (!display) return;
             const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
             const selected = qlikFilters[filterType];
             if (selected.length === 0) { display.textContent = 'Todos'; display.style.color = 'var(--text-muted)'; }
-            else if (selected.length === 1) { if (filterType === 'month') display.textContent = monthNames[parseInt(selected[0])]; else display.textContent = selected[0]; display.style.color = 'var(--success)'; }
+            else if (selected.length === 1) { 
+                if (filterType === 'month') display.textContent = monthNames[parseInt(selected[0])]; 
+                else display.textContent = selected[0]; 
+                display.style.color = 'var(--success)'; 
+            }
             else { display.textContent = `${selected.length} selec.`; display.style.color = 'var(--success)'; }
         }
 
         function getAvailableYears() { const years = new Set(); cachedTasks.forEach(task => { const year = new Date(task.created_at).getFullYear(); years.add(year); }); return Array.from(years).sort((a, b) => b - a); }
-        function getAvailableMonths(year) { const months = new Set(); cachedTasks.forEach(task => { const taskDate = new Date(task.created_at); if (!year || taskDate.getFullYear() === parseInt(year)) months.add(taskDate.getMonth()); }); return Array.from(months).sort((a, b) => a - b); }
+        function getAvailableMonths(selectedYear) { const months = new Set(); cachedTasks.forEach(task => { const taskDate = new Date(task.created_at); if (!selectedYear || taskDate.getFullYear() === parseInt(selectedYear)) months.add(taskDate.getMonth()); }); return Array.from(months).sort((a, b) => a - b); }
         function getAvailableDays(year, month) { const days = new Set(); cachedTasks.forEach(task => { const taskDate = new Date(task.created_at); if (taskDate.getFullYear() === parseInt(year) && taskDate.getMonth() === parseInt(month)) days.add(taskDate.getDate()); }); return Array.from(days).sort((a, b) => a - b); }
 
         function initializeQlikFilters() {
+            // RESET filters first
+            qlikFilters = { year: [], month: [], day: [] };
+            
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
             const yearDropdown = document.getElementById('yearDropdown');
+            if (!yearDropdown) return;
             yearDropdown.innerHTML = '';
             const availableYears = getAvailableYears();
-            if (availableYears.length === 0) { yearDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; }
-            else {
+            
+            if (availableYears.length === 0) { 
+                yearDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+            } else {
                 availableYears.forEach(year => {
                     const div = document.createElement('div');
                     div.className = 'qlik-filter-option';
-                    if (year === currentYear) { div.classList.add('selected'); qlikFilters.year.push(year.toString()); }
-                    div.dataset.value = year; div.textContent = year;
+                    // Auto-select current year if available
+                    if (year === currentYear && availableYears.includes(currentYear)) { 
+                        div.classList.add('selected'); 
+                        qlikFilters.year = [year.toString()]; 
+                    }
+                    div.dataset.value = year; 
+                    div.textContent = year;
                     div.onclick = function() { toggleQlikOption(this, 'year'); };
                     yearDropdown.appendChild(div);
                 });
+                // If current year not available, select first available
+                if (qlikFilters.year.length === 0 && availableYears.length > 0) {
+                    qlikFilters.year = [availableYears[0].toString()];
+                    yearDropdown.querySelector('.qlik-filter-option').classList.add('selected');
+                }
             }
-            populateQlikMonths(); populateQlikDays();
-            updateQlikDisplay('year'); updateQlikDisplay('month'); updateQlikDisplay('day');
+            populateQlikMonths(); 
+            populateQlikDays();
+            updateQlikDisplay('year'); 
+            updateQlikDisplay('month'); 
+            updateQlikDisplay('day');
         }
 
         function populateQlikMonths() {
             const monthDropdown = document.getElementById('monthDropdown');
+            if (!monthDropdown) return;
             monthDropdown.innerHTML = '';
             const selectedYear = qlikFilters.year.length === 1 ? qlikFilters.year[0] : null;
             const availableMonths = getAvailableMonths(selectedYear);
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             const now = new Date();
-            if (availableMonths.length === 0) { monthDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; }
-            else {
+            
+            if (availableMonths.length === 0) { 
+                monthDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+            } else {
+                // Reset month selection
+                qlikFilters.month = [];
                 availableMonths.forEach(monthNum => {
                     const div = document.createElement('div');
                     div.className = 'qlik-filter-option';
-                    div.dataset.value = monthNum; div.textContent = monthNames[monthNum];
-                    if (qlikFilters.year.includes(now.getFullYear().toString()) && monthNum === now.getMonth() && qlikFilters.month.length === 0) { div.classList.add('selected'); qlikFilters.month.push(monthNum.toString()); }
-                    else if (qlikFilters.month.includes(monthNum.toString())) { div.classList.add('selected'); }
+                    div.dataset.value = monthNum; 
+                    div.textContent = monthNames[monthNum];
+                    // Auto-select current month if year matches
+                    if (qlikFilters.year.includes(now.getFullYear().toString()) && monthNum === now.getMonth()) { 
+                        div.classList.add('selected'); 
+                        qlikFilters.month = [monthNum.toString()]; 
+                    }
                     div.onclick = function() { toggleQlikOption(this, 'month'); };
                     monthDropdown.appendChild(div);
                 });
+                // If current month not selected, select first available
+                if (qlikFilters.month.length === 0 && availableMonths.length > 0) {
+                    qlikFilters.month = [availableMonths[0].toString()];
+                    monthDropdown.querySelector('.qlik-filter-option').classList.add('selected');
+                }
             }
             updateQlikDisplay('month');
         }
 
         function populateQlikDays() {
             const dayDropdown = document.getElementById('dayDropdown');
+            if (!dayDropdown) return;
             dayDropdown.innerHTML = '';
+            qlikFilters.day = [];
+            
             if (qlikFilters.year.length === 1 && qlikFilters.month.length === 1) {
                 const year = qlikFilters.year[0];
                 const month = qlikFilters.month[0];
                 const availableDays = getAvailableDays(year, month);
-                if (availableDays.length === 0) { dayDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; }
-                else {
+                if (availableDays.length === 0) { 
+                    dayDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+                } else {
                     availableDays.forEach(day => {
                         const div = document.createElement('div');
                         div.className = 'qlik-filter-option';
-                        div.dataset.value = day; div.textContent = day;
-                        if (qlikFilters.day.includes(day.toString())) div.classList.add('selected');
+                        div.dataset.value = day; 
+                        div.textContent = day;
                         div.onclick = function() { toggleQlikOption(this, 'day'); };
                         dayDropdown.appendChild(div);
                     });
                 }
             } else {
                 const msg = document.createElement('div');
-                msg.style.padding = '10px'; msg.style.fontSize = '0.75rem'; msg.style.color = 'var(--text-muted)'; msg.style.textAlign = 'center';
+                msg.style.padding = '10px'; 
+                msg.style.fontSize = '0.75rem'; 
+                msg.style.color = 'var(--text-muted)'; 
+                msg.style.textAlign = 'center';
                 msg.textContent = 'Selecciona 1 año y 1 mes';
                 dayDropdown.appendChild(msg);
             }
-            if (qlikFilters.year.length !== 1 || qlikFilters.month.length !== 1) qlikFilters.day = [];
             updateQlikDisplay('day');
+        }
+
+        // ============================================
+        // QLIK FILTERS - PRODUCTIVITY
+        // ============================================
+        function toggleProdQlikOption(element, filterType) {
+            const value = element.dataset.value;
+            element.classList.toggle('selected');
+            if (element.classList.contains('selected')) { if (!prodQlikFilters[filterType].includes(value)) prodQlikFilters[filterType].push(value); }
+            else { prodQlikFilters[filterType] = prodQlikFilters[filterType].filter(v => v !== value); }
+            updateProdQlikDisplay(filterType);
+            if (filterType === 'month' || filterType === 'year') populateProdQlikDays();
+            renderProductivity();
+        }
+
+        function clearProdQlikFilter(filterType) {
+            prodQlikFilters[filterType] = [];
+            const dropdownId = filterType === 'year' ? 'prodYearDropdown' : filterType === 'month' ? 'prodMonthDropdown' : 'prodDayDropdown';
+            document.querySelectorAll(`#${dropdownId} .qlik-filter-option`).forEach(opt => opt.classList.remove('selected'));
+            updateProdQlikDisplay(filterType);
+            if (filterType === 'month' || filterType === 'year') populateProdQlikDays();
+            renderProductivity();
+        }
+
+        function updateProdQlikDisplay(filterType) {
+            const displayId = filterType === 'year' ? 'prodYearDisplay' : filterType === 'month' ? 'prodMonthDisplay' : 'prodDayDisplay';
+            const display = document.getElementById(displayId);
+            if (!display) return;
+            const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            const selected = prodQlikFilters[filterType];
+            if (selected.length === 0) { display.textContent = 'Todos'; display.style.color = 'var(--text-muted)'; }
+            else if (selected.length === 1) { 
+                if (filterType === 'month') display.textContent = monthNames[parseInt(selected[0])]; 
+                else display.textContent = selected[0]; 
+                display.style.color = 'var(--success)'; 
+            }
+            else { display.textContent = `${selected.length} selec.`; display.style.color = 'var(--success)'; }
+        }
+
+        function initializeProdQlikFilters() {
+            prodQlikFilters = { year: [], month: [], day: [] };
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const yearDropdown = document.getElementById('prodYearDropdown');
+            if (!yearDropdown) return;
+            yearDropdown.innerHTML = '';
+            const availableYears = getAvailableYears();
+            
+            if (availableYears.length === 0) { 
+                yearDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+            } else {
+                availableYears.forEach(year => {
+                    const div = document.createElement('div');
+                    div.className = 'qlik-filter-option';
+                    if (year === currentYear) { 
+                        div.classList.add('selected'); 
+                        prodQlikFilters.year = [year.toString()]; 
+                    }
+                    div.dataset.value = year; 
+                    div.textContent = year;
+                    div.onclick = function() { toggleProdQlikOption(this, 'year'); };
+                    yearDropdown.appendChild(div);
+                });
+                if (prodQlikFilters.year.length === 0 && availableYears.length > 0) {
+                    prodQlikFilters.year = [availableYears[0].toString()];
+                    yearDropdown.querySelector('.qlik-filter-option').classList.add('selected');
+                }
+            }
+            populateProdQlikMonths(); 
+            populateProdQlikDays();
+            updateProdQlikDisplay('year'); 
+            updateProdQlikDisplay('month'); 
+            updateProdQlikDisplay('day');
+        }
+
+        function populateProdQlikMonths() {
+            const monthDropdown = document.getElementById('prodMonthDropdown');
+            if (!monthDropdown) return;
+            monthDropdown.innerHTML = '';
+            const selectedYear = prodQlikFilters.year.length === 1 ? prodQlikFilters.year[0] : null;
+            const availableMonths = getAvailableMonths(selectedYear);
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const now = new Date();
+            
+            if (availableMonths.length === 0) { 
+                monthDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+            } else {
+                prodQlikFilters.month = [];
+                availableMonths.forEach(monthNum => {
+                    const div = document.createElement('div');
+                    div.className = 'qlik-filter-option';
+                    div.dataset.value = monthNum; 
+                    div.textContent = monthNames[monthNum];
+                    if (prodQlikFilters.year.includes(now.getFullYear().toString()) && monthNum === now.getMonth()) { 
+                        div.classList.add('selected'); 
+                        prodQlikFilters.month = [monthNum.toString()]; 
+                    }
+                    div.onclick = function() { toggleProdQlikOption(this, 'month'); };
+                    monthDropdown.appendChild(div);
+                });
+                if (prodQlikFilters.month.length === 0 && availableMonths.length > 0) {
+                    prodQlikFilters.month = [availableMonths[0].toString()];
+                    monthDropdown.querySelector('.qlik-filter-option').classList.add('selected');
+                }
+            }
+            updateProdQlikDisplay('month');
+        }
+
+        function populateProdQlikDays() {
+            const dayDropdown = document.getElementById('prodDayDropdown');
+            if (!dayDropdown) return;
+            dayDropdown.innerHTML = '';
+            prodQlikFilters.day = [];
+            
+            if (prodQlikFilters.year.length === 1 && prodQlikFilters.month.length === 1) {
+                const year = prodQlikFilters.year[0];
+                const month = prodQlikFilters.month[0];
+                const availableDays = getAvailableDays(year, month);
+                if (availableDays.length === 0) { 
+                    dayDropdown.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.75rem">Sin datos</div>'; 
+                } else {
+                    availableDays.forEach(day => {
+                        const div = document.createElement('div');
+                        div.className = 'qlik-filter-option';
+                        div.dataset.value = day; 
+                        div.textContent = day;
+                        div.onclick = function() { toggleProdQlikOption(this, 'day'); };
+                        dayDropdown.appendChild(div);
+                    });
+                }
+            } else {
+                const msg = document.createElement('div');
+                msg.style.padding = '10px'; 
+                msg.style.fontSize = '0.75rem'; 
+                msg.style.color = 'var(--text-muted)'; 
+                msg.style.textAlign = 'center';
+                msg.textContent = 'Selecciona 1 año y 1 mes';
+                dayDropdown.appendChild(msg);
+            }
+            updateProdQlikDisplay('day');
         }
 
         // ============================================
@@ -1670,14 +1886,13 @@
             Chart.defaults.color = chartColors.text;
             Chart.defaults.borderColor = chartColors.border;
 
+            // Status Chart
             const statusCounts = { pendiente: filtered.filter(t => t.status === 'pendiente').length, en_progreso: inProgress, pausada: filtered.filter(t => t.status === 'pausada').length, completada: completed };
             if (charts.status) charts.status.destroy();
             charts.status = new Chart(document.getElementById('statusChart'), { type: 'bar', data: { labels: ['Pendiente', 'En Progreso', 'Pausada', 'Completada'], datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#6b7280', chartColors.info, chartColors.warning, chartColors.success], borderRadius: 12, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
 
+            // Progress Rings por tipo
             const typeCounts = { principal: filtered.filter(t => t.task_type === 'principal').length, gestion: filtered.filter(t => t.task_type === 'gestion').length, complementario: filtered.filter(t => t.task_type === 'complementario').length };
-            if (charts.type) charts.type.destroy();
-            charts.type = new Chart(document.getElementById('typeChart'), { type: 'doughnut', data: { labels: ['Principal', 'Gestión', 'Complementario'], datasets: [{ data: Object.values(typeCounts), backgroundColor: [chartColors.warning, chartColors.info, chartColors.success], borderWidth: 0, spacing: 6 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle', font: { size: 13, weight: 600 } } } } } });
-
             renderProgressRing('ringPrincipal', typeCounts.principal, total, chartColors.warning);
             renderProgressRing('ringGestion', typeCounts.gestion, total, chartColors.info);
             renderProgressRing('ringComplementario', typeCounts.complementario, total, chartColors.success);
@@ -1685,49 +1900,58 @@
             document.getElementById('ringGestionValue').textContent = typeCounts.gestion;
             document.getElementById('ringComplementarioValue').textContent = typeCounts.complementario;
 
-            // Trend Chart
+            // Trend + Productivity Chart (FUSIONADO)
             if (charts.trend) charts.trend.destroy();
-            let trendLabels, trendData, trendTitle = 'Tendencia Semanal';
+            let trendLabels, trendData, productivityData, trendTitle = 'Tendencia y Productividad';
+            
             if (isSingleDay) { 
-                trendTitle = `Tendencia - Día ${selectedDays[0]}`; 
+                trendTitle = `Tendencia - Día ${selectedDays[0]} de ${monthNames[selectedMonths[0]]}`; 
                 trendLabels = ['8h', '10h', '12h', '14h', '16h', '18h']; 
                 trendData = trendLabels.map((_, i) => { const hour = 8 + (i * 2); return filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getHours() <= hour; }).length; }); 
+                productivityData = trendLabels.map((_, i) => { const hour = 8 + (i * 2); return filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getHours() <= hour && t.status === 'completada'; }).length; });
             }
             else if (isSingleMonth) { 
                 const month = selectedMonths[0]; 
                 trendTitle = `Tendencia - ${monthNames[month]} ${year}`; 
                 const daysInMonth = new Date(year, month + 1, 0).getDate(); 
                 const startDay = Math.max(1, daysInMonth - 6); 
-                trendLabels = [...Array(7)].map((_, i) => `${startDay + i}`); 
-                trendData = trendLabels.map(dayNum => cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === month && taskDate.getDate() === parseInt(dayNum); }).length); 
+                trendLabels = [...Array(Math.min(7, daysInMonth))].map((_, i) => `${startDay + i}`); 
+                trendData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum); }).length); 
+                productivityData = trendLabels.map(dayNum => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getDate() === parseInt(dayNum) && t.status === 'completada'; }).length);
             }
-            else { if (selectedMonths.length > 1) { trendTitle = `Tendencia - Meses Seleccionados`; trendLabels = selectedMonths.map(m => monthNames[m]); trendData = selectedMonths.map(m => cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === m; }).length); } else { trendTitle = `Tendencia - ${year}`; trendLabels = monthNames; trendData = monthNames.map((_, m) => cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === m; }).length); } }
+            else { 
+                if (selectedMonths.length > 1) { 
+                    trendTitle = `Tendencia - Meses Seleccionados`; 
+                    trendLabels = selectedMonths.map(m => monthNames[m].substring(0, 3)); 
+                    trendData = selectedMonths.map(m => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getMonth() === m; }).length); 
+                    productivityData = selectedMonths.map(m => filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getMonth() === m && t.status === 'completada'; }).length);
+                } else { 
+                    trendTitle = `Tendencia - ${year}`; 
+                    trendLabels = monthNames.map(m => m.substring(0, 3)); 
+                    trendData = monthNames.map((_, m) => cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === m; }).length); 
+                    productivityData = monthNames.map((_, m) => cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === m && t.status === 'completada'; }).length);
+                } 
+            }
+            
             document.getElementById('trendChartCard').querySelector('.chart-title').textContent = trendTitle;
-            charts.trend = new Chart(document.getElementById('trendChart'), { type: 'line', data: { labels: trendLabels, datasets: [{ label: 'Tareas creadas', data: trendData, borderColor: chartColors.accent, backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
-
-            // Productivity Day Chart
-            if (charts.productivityDay) charts.productivityDay.destroy();
-            const productivityData = trendLabels.map((label, i) => {
-                if (isSingleDay) { const hour = 8 + (i * 2); return filtered.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getHours() <= hour && t.status === 'completada'; }).length; }
-                else if (isSingleMonth) { const dayNum = parseInt(label); const month = selectedMonths[0]; return cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === month && taskDate.getDate() === dayNum && t.status === 'completada'; }).length; }
-                else { if (selectedMonths.length > 1) { const month = selectedMonths[i]; return cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === month && t.status === 'completada'; }).length; } else { return cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return taskDate.getFullYear() === year && taskDate.getMonth() === i && t.status === 'completada'; }).length; } }
+            charts.trend = new Chart(document.getElementById('trendChart'), { 
+                type: 'line', 
+                data: { 
+                    labels: trendLabels, 
+                    datasets: [
+                        { label: 'Tareas creadas', data: trendData, borderColor: chartColors.accent, backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.4, fill: true, borderWidth: 3 },
+                        { label: 'Completadas', data: productivityData, borderColor: chartColors.success, backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true, borderWidth: 3 }
+                    ] 
+                }, 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } 
             });
-            const productivityTitle = isSingleDay ? `Productividad - Día ${selectedDays[0]}` : isSingleMonth ? `Productividad - ${monthNames[selectedMonths[0]]}` : 'Productividad por Período';
-            document.getElementById('productivityChartCard').querySelector('.chart-title').textContent = productivityTitle;
-            charts.productivityDay = new Chart(document.getElementById('productivityDayChart'), { type: 'line', data: { labels: trendLabels, datasets: [{ label: 'Completadas', data: productivityData, borderColor: chartColors.success, backgroundColor: 'rgba(16,185,129,0.15)', tension: 0.4, fill: true, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
 
-            // Completion Chart
+            // Completion Chart - Tareas completadas y % jornada por trabajador
             if (charts.completion) charts.completion.destroy();
             const workers = cachedProfiles.filter(p => p.role === 'trabajador');
             const completionData = workers.map(worker => {
                 const workerCompleted = filtered.filter(t => t.assigned_to === worker.id && t.status === 'completada').length;
-                const sessions = cachedTasks.filter(t => t.assigned_to === worker.id).flatMap(t => t.task_sessions || []).filter(s => {
-                    if (!s.start_time) return false;
-                    const sessionDate = new Date(s.start_time);
-                    if (selectedDays.length > 0 && selectedMonths.length === 1) return sessionDate.getFullYear() === year && sessionDate.getMonth() === selectedMonths[0] && selectedDays.includes(sessionDate.getDate().toString());
-                    else if (selectedMonths.length > 0) return sessionDate.getFullYear() === year && selectedMonths.includes(sessionDate.getMonth());
-                    else return sessionDate.getFullYear() === year;
-                });
+                const sessions = filtered.filter(t => t.assigned_to === worker.id).flatMap(t => t.task_sessions || []).filter(s => !s.is_active && s.duration_minutes);
                 const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
                 let workingDays = 0;
                 if (selectedDays.length > 0 && selectedMonths.length === 1) workingDays = selectedDays.length;
@@ -1738,12 +1962,46 @@
                 const jornadaPercent = availableMinutes > 0 ? ((totalMinutes / availableMinutes) * 100).toFixed(1) : 0;
                 return { name: worker.full_name || 'Usuario', completed: workerCompleted, jornadaPercent: parseFloat(jornadaPercent) };
             });
-            charts.completion = new Chart(document.getElementById('completionChart'), { type: 'bar', data: { labels: completionData.map(d => d.name), datasets: [{ label: 'Tareas Completadas', data: completionData.map(d => d.completed), backgroundColor: chartColors.success, borderRadius: 6, yAxisID: 'y' }, { label: '% Jornada', data: completionData.map(d => d.jornadaPercent), backgroundColor: chartColors.accent, borderRadius: 6, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', position: 'left', grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Tareas' } }, y1: { type: 'linear', position: 'right', grid: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: '% Jornada' } }, x: { grid: { display: false } } } } });
+            
+            if (completionData.length > 0) {
+                charts.completion = new Chart(document.getElementById('completionChart'), { 
+                    type: 'bar', 
+                    data: { 
+                        labels: completionData.map(d => d.name), 
+                        datasets: [
+                            { label: 'Tareas Completadas', data: completionData.map(d => d.completed), backgroundColor: chartColors.success, borderRadius: 6, yAxisID: 'y' }, 
+                            { label: '% Jornada', data: completionData.map(d => d.jornadaPercent), backgroundColor: chartColors.accent, borderRadius: 6, yAxisID: 'y1' }
+                        ] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { type: 'linear', position: 'left', grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Tareas' } }, y1: { type: 'linear', position: 'right', grid: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: '% Jornada' } }, x: { grid: { display: false } } } } 
+                });
+            }
 
-            // Worker Status Chart
+            // Worker Status Chart - Estado de tareas por trabajador
             if (charts.workerStatus) charts.workerStatus.destroy();
-            const workerStatusData = workers.map(worker => ({ name: worker.full_name || 'Usuario', completed: filtered.filter(t => t.assigned_to === worker.id && t.status === 'completada').length, pending: filtered.filter(t => t.assigned_to === worker.id && t.status === 'pendiente').length, inProgress: filtered.filter(t => t.assigned_to === worker.id && t.status === 'en_progreso').length, paused: filtered.filter(t => t.assigned_to === worker.id && t.status === 'pausada').length }));
-            charts.workerStatus = new Chart(document.getElementById('workerStatusChart'), { type: 'bar', data: { labels: workerStatusData.map(d => d.name), datasets: [{ label: 'Completadas', data: workerStatusData.map(d => d.completed), backgroundColor: chartColors.success, borderRadius: 6 }, { label: 'En Progreso', data: workerStatusData.map(d => d.inProgress), backgroundColor: chartColors.warning, borderRadius: 6 }, { label: 'Pendientes', data: workerStatusData.map(d => d.pending), backgroundColor: '#6b7280', borderRadius: 6 }, { label: 'Pausadas', data: workerStatusData.map(d => d.paused), backgroundColor: chartColors.danger, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } });
+            const workerStatusData = workers.map(worker => ({ 
+                name: worker.full_name || 'Usuario', 
+                completed: filtered.filter(t => t.assigned_to === worker.id && t.status === 'completada').length, 
+                pending: filtered.filter(t => t.assigned_to === worker.id && t.status === 'pendiente').length, 
+                inProgress: filtered.filter(t => t.assigned_to === worker.id && t.status === 'en_progreso').length, 
+                paused: filtered.filter(t => t.assigned_to === worker.id && t.status === 'pausada').length 
+            }));
+            
+            if (workerStatusData.length > 0) {
+                charts.workerStatus = new Chart(document.getElementById('workerStatusChart'), { 
+                    type: 'bar', 
+                    data: { 
+                        labels: workerStatusData.map(d => d.name), 
+                        datasets: [
+                            { label: 'Completadas', data: workerStatusData.map(d => d.completed), backgroundColor: chartColors.success, borderRadius: 6 }, 
+                            { label: 'En Progreso', data: workerStatusData.map(d => d.inProgress), backgroundColor: chartColors.info, borderRadius: 6 }, 
+                            { label: 'Pendientes', data: workerStatusData.map(d => d.pending), backgroundColor: '#6b7280', borderRadius: 6 }, 
+                            { label: 'Pausadas', data: workerStatusData.map(d => d.paused), backgroundColor: chartColors.warning, borderRadius: 6 }
+                        ] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, grid: { color: chartColors.border }, beginAtZero: true, ticks: { stepSize: 1 } } } } 
+                });
+            }
         }
 
         function renderProgressRing(canvasId, value, total, color) {
@@ -1770,27 +2028,41 @@
         // PRODUCTIVITY VIEW
         // ============================================
         function initializeProductivityFilters() {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth();
-            const yearSelect = document.getElementById('productivityYear');
-            yearSelect.innerHTML = '';
-            for (let year = currentYear - 5; year <= currentYear + 2; year++) {
-                const option = document.createElement('option');
-                option.value = year; option.textContent = year;
-                if (year === currentYear) option.selected = true;
-                yearSelect.appendChild(option);
-            }
-            document.getElementById('productivityMonth').value = currentMonth;
+            initializeProdQlikFilters();
         }
 
         function renderProductivity() {
-            const year = parseInt(document.getElementById('productivityYear').value);
-            const month = parseInt(document.getElementById('productivityMonth').value);
+            const year = prodQlikFilters.year.length > 0 ? parseInt(prodQlikFilters.year[0]) : new Date().getFullYear();
+            const selectedMonths = prodQlikFilters.month.map(m => parseInt(m));
+            const selectedDays = prodQlikFilters.day.map(d => d.toString());
             const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            document.getElementById('headerSubtitle').textContent = `Productividad de ${monthNames[month]} ${year}`;
             
-            const workingDays = getWorkingDaysInMonth(year, month);
+            // Construir subtítulo
+            let subtitle = 'Productividad';
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                if (selectedDays.length === 1) subtitle = `Productividad del ${selectedDays[0]} de ${monthNames[selectedMonths[0]]} ${year}`;
+                else subtitle = `Productividad de días seleccionados en ${monthNames[selectedMonths[0]]} ${year}`;
+            } else if (selectedMonths.length > 0) {
+                if (selectedMonths.length === 1) subtitle = `Productividad de ${monthNames[selectedMonths[0]]} ${year}`;
+                else subtitle = `Productividad de meses seleccionados en ${year}`;
+            } else { subtitle = `Productividad de ${year}`; }
+            document.getElementById('headerSubtitle').textContent = subtitle;
+            
+            // Calcular días laborables según filtros
+            let workingDays = 0;
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                // Filtrar solo días laborables de los seleccionados
+                selectedDays.forEach(day => {
+                    const date = new Date(year, selectedMonths[0], parseInt(day));
+                    const dayOfWeek = date.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isFeriado(date)) workingDays++;
+                });
+            } else if (selectedMonths.length > 0) {
+                selectedMonths.forEach(m => { workingDays += getWorkingDaysInMonth(year, m); });
+            } else {
+                for (let m = 0; m < 12; m++) workingDays += getWorkingDaysInMonth(year, m);
+            }
+            
             const workdayMinutes = 570;
             const availableHoursPerDay = 9.5;
             const totalAvailableMinutes = workingDays * workdayMinutes;
@@ -1799,8 +2071,49 @@
             const availableMins = Math.round((totalAvailableHours % 1) * 60);
             const availableHoursDisplay = availableMins > 0 ? `${availableHours}h ${availableMins}m` : `${availableHours}h`;
             
+            // Filtrar tareas según los filtros Qlik
+            let filteredTasks = [...cachedTasks];
+            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                filteredTasks = filteredTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === year && taskDate.getMonth() === selectedMonths[0] && selectedDays.includes(taskDate.getDate().toString()); 
+                });
+            } else if (selectedMonths.length > 0) {
+                filteredTasks = filteredTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === year && selectedMonths.includes(taskDate.getMonth()); 
+                });
+            } else {
+                filteredTasks = filteredTasks.filter(t => { 
+                    const taskDate = new Date(t.created_at); 
+                    return taskDate.getFullYear() === year; 
+                });
+            }
+            
             const productivityData = cachedProfiles.filter(worker => worker.role === 'trabajador').map(worker => {
-                const workedMinutes = getWorkedMinutesForUser(worker.id, year, month);
+                // Calcular minutos trabajados según filtros
+                let workedMinutes = 0;
+                const workerTasks = filteredTasks.filter(t => t.assigned_to === worker.id);
+                workerTasks.forEach(task => {
+                    const sessions = (task.task_sessions || []).filter(s => !s.is_active && s.duration_minutes);
+                    sessions.forEach(s => {
+                        if (s.start_time) {
+                            const sessionDate = new Date(s.start_time);
+                            let include = false;
+                            if (selectedDays.length > 0 && selectedMonths.length === 1) {
+                                include = sessionDate.getFullYear() === year && sessionDate.getMonth() === selectedMonths[0] && selectedDays.includes(sessionDate.getDate().toString());
+                            } else if (selectedMonths.length > 0) {
+                                include = sessionDate.getFullYear() === year && selectedMonths.includes(sessionDate.getMonth());
+                            } else {
+                                include = sessionDate.getFullYear() === year;
+                            }
+                            if (include) workedMinutes += s.duration_minutes || 0;
+                        } else {
+                            workedMinutes += s.duration_minutes || 0;
+                        }
+                    });
+                });
+                
                 const workedHours = Math.floor(workedMinutes / 60);
                 const workedMins = workedMinutes % 60;
                 let workedDisplay;
@@ -1808,8 +2121,9 @@
                 else if (workedHours > 0 && workedMins > 0) workedDisplay = `${workedHours}h ${workedMins}m`;
                 else if (workedHours > 0) workedDisplay = `${workedHours}h`;
                 else workedDisplay = `${workedMins}m`;
+                
                 const productivity = totalAvailableMinutes > 0 ? ((workedMinutes / totalAvailableMinutes) * 100).toFixed(1) : 0;
-                const completedTasks = cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return t.assigned_to === worker.id && t.status === 'completada' && taskDate.getFullYear() === year && taskDate.getMonth() === month; }).length;
+                const completedTasks = filteredTasks.filter(t => t.assigned_to === worker.id && t.status === 'completada').length;
                 return { name: worker.full_name || 'Usuario', workedMinutes, workedDisplay, productivity: parseFloat(productivity), completedTasks };
             });
             productivityData.sort((a, b) => b.productivity - a.productivity);
@@ -1821,7 +2135,7 @@
             
             document.getElementById('productivityTable').innerHTML = productivityData.map(d => { const productivityBadge = d.productivity >= 80 ? 'success' : d.productivity >= 50 ? 'warning' : 'danger'; return `<tr><td style="font-weight:600">${d.name}</td><td>${workingDays} días</td><td style="font-family:var(--font-mono);font-weight:500">${availableHoursDisplay}</td><td style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">${d.workedDisplay}</td><td><span class="badge badge-${productivityBadge}" style="font-size:0.8125rem">${d.productivity}%</span></td><td><span class="badge badge-info">${d.completedTasks} tareas</span></td></tr>`; }).join('') || '<tr><td colspan="6" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay datos disponibles</td></tr>';
             
-            const completedTasks = cachedTasks.filter(t => { const taskDate = new Date(t.created_at); return t.status === 'completada' && taskDate.getFullYear() === year && taskDate.getMonth() === month; }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
+            const completedTasks = filteredTasks.filter(t => t.status === 'completada').sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
             document.getElementById('productivityCompletedTable').innerHTML = completedTasks.map(t => { const sessions = t.task_sessions || []; const totalMins = sessions.filter(s => !s.is_active).reduce((sum, s) => sum + (s.duration_minutes || 0), 0); const workdayCalc = calculateWorkdayPercentage(totalMins); return `<tr><td style="font-weight:600">${t.title}</td><td>${formatTaskType(t.task_type)}</td><td><span class="badge badge-success">${formatStatus(t.status)}</span></td><td>${t.assigned_profile?.full_name || 'N/A'}</td><td><span class="badge badge-${t.priority === 'alta' ? 'danger' : t.priority === 'media' ? 'warning' : 'success'}">${t.priority}</span></td><td style="font-family:var(--font-mono);font-weight:600">${formatDuration(totalMins)}</td><td><span class="badge badge-${workdayCalc.badgeClass}" style="font-family:var(--font-mono);font-size:0.75rem">${workdayCalc.percentage}%</span></td></tr>`; }).join('') || '<tr><td colspan="7" style="text-align:center;padding:var(--space-10);color:var(--text-muted)">No hay tareas completadas en este período</td></tr>';
         }
 
