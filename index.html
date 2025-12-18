@@ -1048,13 +1048,16 @@
     </div>
 
     <script>
-        // ============================================
-        // SUPABASE CONFIG
-        // ============================================
-        const SUPABASE_URL = 'https://jzjomvfwqvedsyvfcvto.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6am9tdmZ3cXZlZHN5dmZjdnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1OTA1NzAsImV4cCI6MjA3OTE2NjU3MH0.Xp_Ns363pIG46EA_pqd-9bCwBRacrVfzwdIeKYyVBP8';
-        const JEFE_CODE = 'admin2024';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ============================================
+// SUPABASE CONFIG
+// ============================================
+const SUPABASE_URL = 'https://jzjomvfwqvedsyvfcvto.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+const JEFE_CODE = 'admin2024';
+
+// Evitar redeclaración
+window.supabaseClient = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabaseClient;
 
         // ============================================
         // FERIADOS SECTOR PRIVADO PERÚ
